@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+
+// A hook script to check that the commit message respect the conventional commit standards.
+// Based on https://dev.to/mbarzeev/a-git-hook-for-commit-messages-validation-no-husky-just-js-1hni
+
+const fs = require('fs');
+
+const conventionalCommitMessageRegExp =
+    /^(Merge .+|Revert ".+"|((feat|fix|chore|docs|style|refactor|revert|perf|ci|test)(\(.+\))?!?: [A-Za-z0-9].+[^.\s])$)/;
+let exitCode = 0;
+const commitMsgFile = process.argv[2];
+const message = fs.readFileSync(commitMsgFile, 'utf8');
+const title = message.split('\n', 1)[0];
+const isValid = conventionalCommitMessageRegExp.test(title);
+
+if(!isValid) {
+   console.log('Cannot commit: the commit message does not comply with conventional commits standards.');
+   exitCode = 1;
+}
+
+process.exit(exitCode);
