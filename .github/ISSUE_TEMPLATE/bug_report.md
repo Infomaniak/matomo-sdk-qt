@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-*Note: Please write your issue only in english*
+*Note: Please write your issue only in English*
 
 **Description**
 A clear and concise description of what the bug is.
