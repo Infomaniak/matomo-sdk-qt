@@ -30,7 +30,6 @@ jobs:
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
-          archives: "qtbase"
           cache: true
 
       - name: Configure
