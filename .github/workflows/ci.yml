@@ -30,7 +30,9 @@ jobs:
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
+          archives: "qtbase icu"
           cache: true
+          cache-key-prefix: "install-qt-action-qtbase-icu"
 
       - name: Configure
         run: >
@@ -75,7 +77,8 @@ jobs:
 
           cmake -S "$RUNNER_TEMP/matomoqt-consumer" -B "$RUNNER_TEMP/matomoqt-consumer-build" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install;$QT_ROOT_DIR"
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install;$QT_ROOT_DIR" \
+            -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,$QT_ROOT_DIR/lib"
 
       - name: Build downstream consumer
         run: cmake --build "$RUNNER_TEMP/matomoqt-consumer-build" --parallel
