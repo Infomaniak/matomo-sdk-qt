@@ -1,0 +1,20 @@
+name: Dependent Issues
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - closed
+      - reopened
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - closed
+      - reopened
+      - synchronize
+
+jobs:
+  check-dependencies:
+    uses: Infomaniak/.github/.github/workflows/dependent-issues.yml@v2
