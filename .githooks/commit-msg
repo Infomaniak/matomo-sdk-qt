@@ -6,7 +6,7 @@
 const fs = require('fs');
 
 const conventionalCommitMessageRegExp =
-    /^(Merge .+|((feat|fix|chore|docs|style|refactor|revert|perf|ci|test)(\(.+\))?!?: [A-Za-z0-9].+[^.\s])$)/;
+    /^(Merge .+|Revert ".+"|((feat|fix|chore|docs|style|refactor|revert|perf|ci|test)(\(.+\))?!?: [A-Za-z0-9].+[^.\s])$)/;
 let exitCode = 0;
 const commitMsgFile = process.argv[2];
 const message = fs.readFileSync(commitMsgFile, 'utf8');
