@@ -11,6 +11,11 @@ install(
 )
 
 install(
+    FILES "${PROJECT_BINARY_DIR}/include/MatomoQt/Export.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/MatomoQt"
+)
+
+install(
     TARGETS MatomoQtCore
     EXPORT MatomoQtTargets
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"

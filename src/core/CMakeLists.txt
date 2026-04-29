@@ -16,11 +16,15 @@ set_target_properties(MatomoQtCore PROPERTIES
     SOVERSION "${PROJECT_VERSION_MAJOR}"
 )
 
+include(GenerateExportHeader)
+generate_export_header(MatomoQtCore
+    BASE_NAME MATOMOQT_CORE
+    EXPORT_FILE_NAME "${PROJECT_BINARY_DIR}/include/MatomoQt/Export.h"
+)
+
 get_target_property(matomoqt_core_type MatomoQtCore TYPE)
 if(matomoqt_core_type STREQUAL "STATIC_LIBRARY")
-    target_compile_definitions(MatomoQtCore PUBLIC MATOMOQT_CORE_STATIC)
-else()
-    target_compile_definitions(MatomoQtCore PRIVATE MATOMOQT_CORE_LIBRARY)
+    target_compile_definitions(MatomoQtCore PUBLIC MATOMOQT_CORE_STATIC_DEFINE)
 endif()
 
 target_compile_definitions(MatomoQtCore PRIVATE MATOMOQT_VERSION_STRING=\"${PROJECT_VERSION}\")
@@ -28,6 +32,7 @@ target_compile_definitions(MatomoQtCore PRIVATE MATOMOQT_VERSION_STRING=\"${PROJ
 target_include_directories(MatomoQtCore
     PUBLIC
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>"
         "$<INSTALL_INTERFACE:include>"
 )
 
