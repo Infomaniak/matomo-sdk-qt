@@ -22,13 +22,5 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
-**Logs**
-"Open debugging folder" in "Preferences"
-We need you to enable "Extended Full Log" in "Debugging information"
-*Please note that the name of your files will appear in this log.*
-
 **Additional context**
 Add any other context about the problem here.
