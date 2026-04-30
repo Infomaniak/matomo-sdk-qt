@@ -10,7 +10,7 @@ ARG ACTION_RUNNER_ARCH=x64
 
 # See https://github.com/miurahr/aqtinstall
 ARG QT_VERSION=6.8.3
-ARG QT_ARCHIVES="qtbase icu"
+ARG QT_ARCHIVES="qtbase qtdeclarative icu"
 ARG QT_MODULES=""
 ARG QT_DIR=/opt/qt
 
@@ -35,15 +35,65 @@ RUN apt-install locales && \
     locale-gen $LANG && \
     update-locale LANG=$LANG
 
-RUN apt-install curl tar gzip ca-certificates jq libdigest-sha-perl python3-venv
+RUN apt-install \
+    curl \
+    tar \
+    gzip \
+    xz-utils \
+    unzip \
+    ca-certificates \
+    jq \
+    libdigest-sha-perl \
+    python3-venv \
+    python3-pip
 
-RUN apt-install git cmake ninja-build build-essential libglib2.0-dev
+RUN apt-install \
+    git \
+    cmake \
+    ninja-build \
+    build-essential \
+    clang \
+    lld \
+    clang-format \
+    pkg-config \
+    ccache \
+    openssl \
+    libssl-dev \
+    libglib2.0-dev \
+    libgl1-mesa-dev \
+    libegl1-mesa-dev \
+    libgl1-mesa-dri \
+    libxkbcommon-dev \
+    libxkbcommon-x11-0 \
+    libfontconfig1 \
+    libfreetype6 \
+    libdbus-1-3 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcb-cursor0 \
+    libxcb-glx0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render0 \
+    libxcb-render-util0 \
+    libxcb-shape0 \
+    libxcb-shm0 \
+    libxcb-sync1 \
+    libxcb-xfixes0 \
+    libxcb-xinerama0 \
+    libxcb-xkb1 \
+    xvfb
 
-# Install Qt via aqtinstall in a dedicated venv
-RUN python3 -m venv /opt/aqt-venv && \
-    /opt/aqt-venv/bin/pip install aqtinstall
+RUN python3 -m venv /opt/venv
 
-ENV PATH="/opt/aqt-venv/bin:${PATH}"
+RUN /opt/venv/bin/pip install aqtinstall
+
+RUN /opt/venv/bin/pip install "conan>=2,<3"
+
+ENV PATH="/opt/venv/bin:${PATH}"
 
 RUN case "$ACTION_RUNNER_ARCH" in \
         x64)   AQT_ARCH="linux_gcc_64" ;; \
@@ -58,7 +108,7 @@ RUN case "$ACTION_RUNNER_ARCH" in \
 ENV QT_VERSION=${QT_VERSION}
 ENV QT_DIR=${QT_DIR}
 ENV PATH="${QT_DIR}/current/bin:${PATH}"
-ENV LD_LIBRARY_PATH="${QT_DIR}/current/lib:${LD_LIBRARY_PATH:-}"
+ENV LD_LIBRARY_PATH="${QT_DIR}/current/lib"
 ENV CMAKE_PREFIX_PATH="${QT_DIR}/current"
 
 # Prepare the runner user and working directory
