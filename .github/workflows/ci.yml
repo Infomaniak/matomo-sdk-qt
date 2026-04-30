@@ -16,30 +16,24 @@ permissions:
 
 jobs:
   build:
-    name: Build and install
-    runs-on: ubuntu-24.04
+    name: Build and install (ubuntu-${{ matrix.ubuntu }}, Qt ${{ matrix.qt }})
+    runs-on: [self-hosted, "ubuntu-${{ matrix.ubuntu }}", "qt-${{ matrix.qt }}"]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ubuntu: "24.04"
+            qt: "6.8.3"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Install Qt
-        # jurplel/install-qt-action@v4.3.1
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730
-        with:
-          version: "6.8.3"
-          host: "linux"
-          target: "desktop"
-          arch: "linux_gcc_64"
-          archives: "qtbase icu"
-          cache: true
-          cache-key-prefix: "install-qt-action-qtbase-icu"
-
       - name: Configure
         run: >
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
           -DMATOMOQT_BUILD_QML=OFF
           -DMATOMOQT_BUILD_TESTS=OFF
           -DMATOMOQT_BUILD_EXAMPLES=OFF
@@ -78,8 +72,7 @@ jobs:
 
           cmake -S "$RUNNER_TEMP/matomoqt-consumer" -B "$RUNNER_TEMP/matomoqt-consumer-build" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install;$QT_ROOT_DIR" \
-            -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,$QT_ROOT_DIR/lib"
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install"
 
       - name: Build downstream consumer
         run: cmake --build "$RUNNER_TEMP/matomoqt-consumer-build" --parallel
