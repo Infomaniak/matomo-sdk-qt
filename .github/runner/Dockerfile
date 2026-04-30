@@ -37,6 +37,8 @@ RUN apt-install locales && \
 
 RUN apt-install curl tar gzip ca-certificates jq libdigest-sha-perl python3-venv
 
+RUN apt-install git cmake ninja-build build-essential
+
 # Install Qt via aqtinstall in a dedicated venv
 RUN python3 -m venv /opt/aqt-venv && \
     /opt/aqt-venv/bin/pip install aqtinstall
