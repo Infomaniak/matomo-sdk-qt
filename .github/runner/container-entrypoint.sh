@@ -4,7 +4,10 @@ set -euo pipefail
 . /etc/os-release
 
 RUNNER_REPO="${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}"
-GITHUB_TOKEN="${GITHUB_TOKEN:?GITHUB_TOKEN environment variable is required}"
+if [ -z "${GITHUB_TOKEN:-}" ] && [ -r /run/secrets/github_token ]; then
+    GITHUB_TOKEN="$(cat /run/secrets/github_token)"
+fi
+GITHUB_TOKEN="${GITHUB_TOKEN:?GITHUB_TOKEN environment variable or github_token secret is required}"
 RUNNER_NAME="${RUNNER_NAME:-${ID}-${VERSION_ID}-qt${QT_VERSION}}"
 RUNNER_LABELS="${RUNNER_LABELS:-${ID}-${VERSION_ID},qt-${QT_VERSION}}"
 
