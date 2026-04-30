@@ -1,0 +1,11 @@
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(MATOMOQT_IS_TOP_LEVEL ON)
+else()
+    set(MATOMOQT_IS_TOP_LEVEL OFF)
+endif()
+
+option(MATOMOQT_BUILD_QML "Build the MatomoQt QML module" OFF)
+option(MATOMOQT_BUILD_TESTS "Build MatomoQt tests" OFF)
+option(MATOMOQT_BUILD_EXAMPLES "Build MatomoQt examples" OFF)
+option(MATOMOQT_INSTALL "Install MatomoQt targets and CMake package files" ${MATOMOQT_IS_TOP_LEVEL})
+option(MATOMOQT_WARNINGS_AS_ERRORS "Treat MatomoQt compiler warnings as errors" OFF)
