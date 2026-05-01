@@ -47,3 +47,7 @@ Thumbs.db
 
 # Generated PR description file
 PR.md
+
+# Local runner secrets
+.github/runner/*.env
+!.github/runner/*.env.example
