@@ -3,6 +3,7 @@ add_library(MatomoQt::Core ALIAS MatomoQtCore)
 
 target_sources(MatomoQtCore
     PRIVATE
+        RequestResult.cpp
         Tracker.cpp
         TrackerConfig.cpp
         Version.cpp
