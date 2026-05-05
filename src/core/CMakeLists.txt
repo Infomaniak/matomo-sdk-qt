@@ -6,6 +6,7 @@ target_sources(MatomoQtCore
         Tracker.cpp
         TrackerConfig.cpp
         Version.cpp
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"

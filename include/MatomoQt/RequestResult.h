@@ -1,0 +1,24 @@
+#pragma once
+
+#include <QtCore/QString>
+
+namespace MatomoQt {
+
+/** Result of accepting or rejecting a tracking call. */
+struct RequestResult {
+        enum class Status {
+            Accepted,
+            Disabled,
+            BlockedByPrivacy,
+            InvalidConfig,
+            InvalidPayload,
+        };
+
+        Status status = Status::Accepted;
+        QString message;
+
+        /** Returns true when the tracking call passed local validation. */
+        [[nodiscard]] bool accepted() const;
+};
+
+} // namespace MatomoQt
