@@ -3,8 +3,10 @@ add_library(MatomoQt::Core ALIAS MatomoQtCore)
 
 target_sources(MatomoQtCore
     PRIVATE
+        Tracker.cpp
         TrackerConfig.cpp
         Version.cpp
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"
 )
@@ -12,6 +14,7 @@ target_sources(MatomoQtCore
 target_compile_features(MatomoQtCore PUBLIC cxx_std_20)
 
 set_target_properties(MatomoQtCore PROPERTIES
+    AUTOMOC ON
     CXX_EXTENSIONS OFF
     EXPORT_NAME Core
     OUTPUT_NAME MatomoQtCore
