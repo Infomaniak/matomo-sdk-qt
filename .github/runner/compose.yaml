@@ -10,6 +10,70 @@ x-runner-common: &runner-common
     - github_token
 
 services:
+  ubuntu-22-04-qt-6-2-3:
+    <<: *runner-common
+    image: matomo-sdk-qt-runner:ubuntu22.04-qt6.2.3
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "22.04"
+        QT_VERSION: "6.2.3"
+      secrets:
+        - github_token
+    environment:
+      RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
+      RUNNER_NAME: ubuntu-22.04-qt6.2.3
+      RUNNER_LABELS: ubuntu-22.04,qt-6.2.3
+
+  ubuntu-22-04-qt-6-8-3:
+    <<: *runner-common
+    image: matomo-sdk-qt-runner:ubuntu22.04-qt6.8.3
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "22.04"
+        QT_VERSION: "6.8.3"
+      secrets:
+        - github_token
+    environment:
+      RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
+      RUNNER_NAME: ubuntu-22.04-qt6.8.3
+      RUNNER_LABELS: ubuntu-22.04,qt-6.8.3
+
+  ubuntu-22-04-qt-6-11-1:
+    <<: *runner-common
+    image: matomo-sdk-qt-runner:ubuntu22.04-qt6.11.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "22.04"
+        QT_VERSION: "6.11.1"
+      secrets:
+        - github_token
+    environment:
+      RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
+      RUNNER_NAME: ubuntu-22.04-qt6.11.1
+      RUNNER_LABELS: ubuntu-22.04,qt-6.11.1
+
+  ubuntu-24-04-qt-6-2-3:
+    <<: *runner-common
+    image: matomo-sdk-qt-runner:ubuntu24.04-qt6.2.3
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "24.04"
+        QT_VERSION: "6.2.3"
+      secrets:
+        - github_token
+    environment:
+      RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
+      RUNNER_NAME: ubuntu-24.04-qt6.2.3
+      RUNNER_LABELS: ubuntu-24.04,qt-6.2.3
+
   ubuntu-24-04-qt-6-8-3:
     <<: *runner-common
     image: matomo-sdk-qt-runner:ubuntu24.04-qt6.8.3
@@ -26,37 +90,69 @@ services:
       RUNNER_NAME: ubuntu-24.04-qt6.8.3
       RUNNER_LABELS: ubuntu-24.04,qt-6.8.3
 
-  ubuntu-22-04-qt-6-5-3:
+  ubuntu-24-04-qt-6-11-1:
     <<: *runner-common
-    image: matomo-sdk-qt-runner:ubuntu22.04-qt6.5.3
+    image: matomo-sdk-qt-runner:ubuntu24.04-qt6.11.1
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        UBUNTU_VERSION: "22.04"
-        QT_VERSION: "6.5.3"
+        UBUNTU_VERSION: "24.04"
+        QT_VERSION: "6.11.1"
       secrets:
         - github_token
     environment:
       RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
-      RUNNER_NAME: ubuntu-22.04-qt6.5.3
-      RUNNER_LABELS: ubuntu-22.04,qt-6.5.3
+      RUNNER_NAME: ubuntu-24.04-qt6.11.1
+      RUNNER_LABELS: ubuntu-24.04,qt-6.11.1
 
-  ubuntu-22-04-qt-6-2-3:
+  ubuntu-26-04-qt-6-2-3:
     <<: *runner-common
-    image: matomo-sdk-qt-runner:ubuntu22.04-qt6.2.3
+    image: matomo-sdk-qt-runner:ubuntu26.04-qt6.2.3
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        UBUNTU_VERSION: "22.04"
+        UBUNTU_VERSION: "26.04"
         QT_VERSION: "6.2.3"
       secrets:
         - github_token
     environment:
       RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
-      RUNNER_NAME: ubuntu-22.04-qt6.2.3
-      RUNNER_LABELS: ubuntu-22.04,qt-6.2.3
+      RUNNER_NAME: ubuntu-26.04-qt6.2.3
+      RUNNER_LABELS: ubuntu-26.04,qt-6.2.3
+
+  ubuntu-26-04-qt-6-8-3:
+    <<: *runner-common
+    image: matomo-sdk-qt-runner:ubuntu26.04-qt6.8.3
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "26.04"
+        QT_VERSION: "6.8.3"
+      secrets:
+        - github_token
+    environment:
+      RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
+      RUNNER_NAME: ubuntu-26.04-qt6.8.3
+      RUNNER_LABELS: ubuntu-26.04,qt-6.8.3
+
+  ubuntu-26-04-qt-6-11-1:
+    <<: *runner-common
+    image: matomo-sdk-qt-runner:ubuntu26.04-qt6.11.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "26.04"
+        QT_VERSION: "6.11.1"
+      secrets:
+        - github_token
+    environment:
+      RUNNER_REPO: ${RUNNER_REPO:-Infomaniak/matomo-sdk-qt}
+      RUNNER_NAME: ubuntu-26.04-qt6.11.1
+      RUNNER_LABELS: ubuntu-26.04,qt-6.11.1
 
 secrets:
   github_token:
