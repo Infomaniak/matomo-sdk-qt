@@ -15,6 +15,8 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
 
         /** Returns true when the endpoint and site ID can identify a Matomo site. */
         [[nodiscard]] bool isValid() const;
+
+        [[nodiscard]] bool operator==(const TrackerConfig &other) const = default;
 };
 
 } // namespace MatomoQt

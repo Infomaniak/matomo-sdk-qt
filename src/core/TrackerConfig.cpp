@@ -3,7 +3,9 @@
 namespace MatomoQt {
 
 bool TrackerConfig::isValid() const {
-    return endpoint.isValid() && !endpoint.isEmpty() && siteId > 0;
+    const auto scheme = endpoint.scheme();
+    return endpoint.isValid() && !endpoint.isEmpty() && (scheme == QStringLiteral("http") || scheme == QStringLiteral("https")) &&
+           siteId > 0;
 }
 
 } // namespace MatomoQt
