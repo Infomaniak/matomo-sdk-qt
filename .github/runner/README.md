@@ -32,23 +32,31 @@ Run `.github/runner/build.sh -h` for the full list of supported versions.
 
 ## Build and run the runner fleet
 
-The Compose file builds and starts the three CI runners used by the current
-matrix:
+The Compose file starts the CI runners used by the current matrix:
 
-- Ubuntu 24.04 + Qt 6.8.3
-- Ubuntu 22.04 + Qt 6.5.3
 - Ubuntu 22.04 + Qt 6.2.3
+- Ubuntu 22.04 + Qt 6.8.3
+- Ubuntu 22.04 + Qt 6.11.1
+- Ubuntu 26.04 + Qt 6.2.3
+- Ubuntu 26.04 + Qt 6.8.3
+- Ubuntu 26.04 + Qt 6.11.1
+
+Building every image through `docker compose up --build` starts several large Qt
+builds in parallel and can exhaust Docker/BuildKit temporary storage. Prefer the
+sequential build script:
 
 ```bash
 export GITHUB_TOKEN=ghp_xxx
-docker compose -f .github/runner/compose.yaml up -d --build
+.github/runner/build-all.sh
+docker compose -f .github/runner/compose.yaml up -d --no-build
 ```
 
-If you keep the token in `.github/runner/github_pat.env`, export it first:
+If you keep the token in `.github/runner/github_pat.env`, the build script reads
+it automatically:
 
 ```bash
-export GITHUB_TOKEN="$(cat .github/runner/github_pat.env)"
-docker compose -f .github/runner/compose.yaml up -d --build
+.github/runner/build-all.sh
+docker compose -f .github/runner/compose.yaml up -d --no-build
 ```
 
 Stop and deregister the runners:
@@ -63,7 +71,7 @@ docker compose -f .github/runner/compose.yaml down
 docker run -d \
   -e GITHUB_TOKEN=ghp_xxx \
   -e RUNNER_REPO=<your-github-username>/matomo-sdk-qt \
-  matomo-sdk-qt-runner:ubuntu24.04-qt6.8.3
+  matomo-sdk-qt-runner:ubuntu26.04-qt6.8.3
 ```
 
 The container registers itself as a self-hosted runner on startup and deregisters cleanly on `docker stop`.
@@ -72,10 +80,13 @@ The container registers itself as a self-hosted runner on startup and deregister
 
 The CI workflow targets runners by label. Start one container per matrix entry you want to support:
 
-| Image tag             | Labels matched                        |
-|-----------------------|---------------------------------------|
-| `ubuntu24.04-qt6.8.3` | `self-hosted, ubuntu-24.04, qt-6.8.3` |
-| `ubuntu22.04-qt6.5.3` | `self-hosted, ubuntu-22.04, qt-6.5.3` |
-| `ubuntu22.04-qt6.2.3` | `self-hosted, ubuntu-22.04, qt-6.2.3` |
+| Image tag              | Labels matched                         |
+|------------------------|----------------------------------------|
+| `ubuntu22.04-qt6.2.3`  | `self-hosted, ubuntu-22.04, qt-6.2.3`  |
+| `ubuntu22.04-qt6.8.3`  | `self-hosted, ubuntu-22.04, qt-6.8.3`  |
+| `ubuntu22.04-qt6.11.1` | `self-hosted, ubuntu-22.04, qt-6.11.1` |
+| `ubuntu26.04-qt6.2.3`  | `self-hosted, ubuntu-26.04, qt-6.2.3`  |
+| `ubuntu26.04-qt6.8.3`  | `self-hosted, ubuntu-26.04, qt-6.8.3`  |
+| `ubuntu26.04-qt6.11.1` | `self-hosted, ubuntu-26.04, qt-6.11.1` |
 
 To skip a combination, remove the corresponding entry from `matrix.include` in `.github/workflows/ci.yml`.
