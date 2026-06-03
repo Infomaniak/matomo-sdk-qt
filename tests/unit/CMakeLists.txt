@@ -12,6 +12,18 @@ target_link_libraries(tst_tracker
 
 add_test(NAME tst_tracker COMMAND tst_tracker)
 
+add_executable(tst_requestbuilder tst_requestbuilder.cpp)
+
+set_target_properties(tst_requestbuilder PROPERTIES AUTOMOC ON)
+
+target_link_libraries(tst_requestbuilder
+    PRIVATE
+        MatomoQt::Core
+        Qt6::Test
+)
+
+add_test(NAME tst_requestbuilder COMMAND tst_requestbuilder)
+
 add_executable(tst_public_api tst_public_api.cpp)
 
 target_link_libraries(tst_public_api
@@ -29,9 +41,13 @@ set(matomoqt_public_headers
     Event
     PageView
     PrivacyMode
+    RequestBuilder
+    RequestBuildOptions
+    RequestBuildResult
     RequestResult
     Tracker
     TrackerConfig
+    TrackingRequest
     Version
 )
 
