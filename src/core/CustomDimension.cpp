@@ -3,7 +3,7 @@
 namespace MatomoQt {
 
 bool CustomDimension::isValid() const {
-    return id > 0;
+    return id >= 1 && id <= 999;
 }
 
 } // namespace MatomoQt
