@@ -16,7 +16,7 @@ struct MATOMOQT_CORE_EXPORT RequestResult {
             InvalidPayload,
         };
 
-        Status status = Status::Accepted;
+        Status status = Status::InvalidConfig;
         QString message;
 
         /** Returns true when the tracking call passed local validation. */
