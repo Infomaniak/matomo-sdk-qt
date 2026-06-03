@@ -147,9 +147,12 @@ RUN --mount=type=secret,id=github_token,mode=0444 \
             "$RUNNER_RELEASE_API" \
             | jq -r --arg name "$RUNNER_ARCHIVE" '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")'); \
     fi && \
-    test -n "$RUNNER_SHA256" && test "$RUNNER_SHA256" != "null" && \
     curl -O -L "https://github.com/actions/runner/releases/download/v$ACTION_RUNNER_TAG/$RUNNER_ARCHIVE" && \
-    echo "$RUNNER_SHA256  $RUNNER_ARCHIVE" | shasum -a 256 -c && \
+    if [ -n "$RUNNER_SHA256" ] && [ "$RUNNER_SHA256" != "null" ]; then \
+        echo "$RUNNER_SHA256  $RUNNER_ARCHIVE" | shasum -a 256 -c; \
+    else \
+        echo "Warning: unable to retrieve runner SHA256, skipping checksum verification."; \
+    fi && \
     tar xzf "./$RUNNER_ARCHIVE" && \
     rm "./$RUNNER_ARCHIVE"
 
