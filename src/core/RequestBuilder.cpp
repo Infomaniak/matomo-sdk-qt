@@ -5,7 +5,7 @@
 #include <QtCore/QSet>
 #include <QtCore/QUrlQuery>
 
-#include <functional>
+#include <concepts>
 #include <utility>
 
 namespace MatomoQt {
@@ -62,8 +62,14 @@ bool addCustomDimensions(QUrlQuery &query, const QList<CustomDimension> &dimensi
     return true;
 }
 
+template<typename AddPayloadParameters>
+concept PayloadParameterAppender = requires(AddPayloadParameters addPayloadParameters, QUrlQuery *query) {
+    { addPayloadParameters(query) } -> std::same_as<RequestBuildResult>;
+};
+
+template<PayloadParameterAppender AddPayloadParameters>
 RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionUrl, const RequestBuildOptions &options,
-                                const std::function<RequestBuildResult(QUrlQuery *)> &addPayloadParameters) {
+                                AddPayloadParameters addPayloadParameters) {
     if (!config.isValid()) {
         return invalidConfig(QStringLiteral("Tracker endpoint and site ID are required."));
     }
