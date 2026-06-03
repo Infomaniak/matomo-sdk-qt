@@ -45,12 +45,15 @@ jobs:
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
           -DMATOMOQT_BUILD_QML=OFF
-          -DMATOMOQT_BUILD_TESTS=OFF
+          -DMATOMOQT_BUILD_TESTS=ON
           -DMATOMOQT_BUILD_EXAMPLES=OFF
           -DMATOMOQT_WARNINGS_AS_ERRORS=ON
 
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
 
       - name: Install
         run: cmake --install build --prefix "$RUNNER_TEMP/matomoqt-install"
