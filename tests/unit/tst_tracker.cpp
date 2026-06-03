@@ -12,17 +12,22 @@
 
 using namespace MatomoQt;
 
+namespace {
 class TrackerTest : public QObject {
         Q_OBJECT
 
     private slots:
-        void defaultConfigIsPrivacySafe();
-        void configValidityRequiresEndpointAndSiteId();
-        void payloadValidityUsesRequiredFields();
-        void trackerDoesNotAcceptWithoutConsentByDefault();
-        void trackerAcceptsCallsAfterConsent();
-        void trackerSupportsDisabledAndOptOutModes();
+        static void defaultConfigIsPrivacySafe();
+        static void configValidityRequiresEndpointAndSiteId();
+
+        static void payloadValidityUsesRequiredFields();
+        static void trackerDoesNotAcceptWithoutConsentByDefault();
+
+        static void trackerAcceptsCallsAfterConsent();
+
+        static void trackerSupportsDisabledAndOptOutModes();
 };
+} // namespace
 
 void TrackerTest::defaultConfigIsPrivacySafe() {
     const TrackerConfig config;
