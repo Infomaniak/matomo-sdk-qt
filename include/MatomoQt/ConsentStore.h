@@ -18,7 +18,7 @@ class MATOMOQT_CORE_EXPORT ConsentStore {
         virtual ~ConsentStore();
 
         /** Returns the stored consent state, or Unknown when none exists. */
-        virtual ConsentState consentState() const = 0;
+        [[nodiscard]] virtual ConsentState consentState() const = 0;
 
         /** Persists the consent state chosen by the application. */
         virtual void setConsentState(ConsentState state) = 0;

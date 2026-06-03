@@ -19,7 +19,7 @@ class MATOMOQT_CORE_EXPORT ClientIdStore {
         virtual ~ClientIdStore();
 
         /** Returns the stored client ID, or an empty string when none exists. */
-        virtual QString clientId() const = 0;
+        [[nodiscard]] virtual QString clientId() const = 0;
 
         /** Persists the client ID chosen by the application or SDK. */
         virtual void setClientId(const QString &clientId) = 0;

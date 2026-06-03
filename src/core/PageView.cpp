@@ -5,7 +5,7 @@
 namespace MatomoQt {
 
 bool PageView::isValid() const {
-    return !path.trimmed().isEmpty() && std::all_of(customDimensions.cbegin(), customDimensions.cend(),
+    return !path.trimmed().isEmpty() && std::ranges::all_of(customDimensions,
                                                     [](const CustomDimension &dimension) { return dimension.isValid(); });
 }
 
