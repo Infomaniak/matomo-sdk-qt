@@ -41,22 +41,20 @@ The Compose file starts the CI runners used by the current matrix:
 - Ubuntu 26.04 + Qt 6.8.3
 - Ubuntu 26.04 + Qt 6.11.1
 
-Building every image through `docker compose up --build` starts several large Qt
-builds in parallel and can exhaust Docker/BuildKit temporary storage. Prefer the
-sequential build script:
+Each runner image needs roughly 5 GB of Docker/containerd storage while building.
+Make sure the Docker root directory and the containerd snapshotter storage have
+enough free space for the number of runners you build.
 
 ```bash
 export GITHUB_TOKEN=ghp_xxx
-.github/runner/build-all.sh
-docker compose -f .github/runner/compose.yaml up -d --no-build
+docker compose -f .github/runner/compose.yaml up -d --build
 ```
 
-If you keep the token in `.github/runner/github_pat.env`, the build script reads
-it automatically:
+If you keep the token in `.github/runner/github_pat.env`, export it first:
 
 ```bash
-.github/runner/build-all.sh
-docker compose -f .github/runner/compose.yaml up -d --no-build
+export GITHUB_TOKEN="$(cat .github/runner/github_pat.env)"
+docker compose -f .github/runner/compose.yaml up -d --build
 ```
 
 Stop and deregister the runners:
