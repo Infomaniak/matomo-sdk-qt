@@ -43,13 +43,13 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         void setEnabled(bool enabled);
 
         /** Validates a page view tracking call without sending a request. */
-        [[nodiscard]] RequestResult trackPageView(const PageView &pageView);
+        [[nodiscard]] RequestResult trackPageView(const PageView &pageView) const;
 
         /** Validates an event tracking call without sending a request. */
-        [[nodiscard]] RequestResult trackEvent(const Event &event);
+        [[nodiscard]] RequestResult trackEvent(const Event &event) const;
 
         /** Validates a ping tracking call without sending a request. */
-        [[nodiscard]] RequestResult sendPing();
+        [[nodiscard]] RequestResult sendPing() const;
 
     signals:
         void configChanged();

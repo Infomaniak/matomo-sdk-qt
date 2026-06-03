@@ -1,11 +1,13 @@
 #pragma once
 
+#include <MatomoQt/Export.h>
+
 #include <QtCore/QString>
 
 namespace MatomoQt {
 
 /** Matomo custom dimension value for a configured dimension slot. */
-struct CustomDimension {
+struct MATOMOQT_CORE_EXPORT CustomDimension {
         int id = 0;
         QString value;
 

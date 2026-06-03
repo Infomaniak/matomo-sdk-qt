@@ -1,6 +1,7 @@
 #pragma once
 
 #include <MatomoQt/CustomDimension.h>
+#include <MatomoQt/Export.h>
 
 #include <QtCore/QList>
 #include <QtCore/QString>
@@ -8,7 +9,7 @@
 namespace MatomoQt {
 
 /** Page view tracking payload. */
-struct PageView {
+struct MATOMOQT_CORE_EXPORT PageView {
         QString path;
         QString actionName;
         QList<CustomDimension> customDimensions;

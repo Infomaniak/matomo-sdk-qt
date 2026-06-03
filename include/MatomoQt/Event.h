@@ -1,6 +1,7 @@
 #pragma once
 
 #include <MatomoQt/CustomDimension.h>
+#include <MatomoQt/Export.h>
 
 #include <QtCore/QList>
 #include <QtCore/QString>
@@ -10,7 +11,7 @@
 namespace MatomoQt {
 
 /** Event tracking payload. */
-struct Event {
+struct MATOMOQT_CORE_EXPORT Event {
         QString category;
         QString action;
         QString name;

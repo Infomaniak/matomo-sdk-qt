@@ -1,11 +1,13 @@
 #pragma once
 
+#include <MatomoQt/Export.h>
+
 #include <QtCore/QString>
 
 namespace MatomoQt {
 
 /** Result of accepting or rejecting a tracking call. */
-struct RequestResult {
+struct MATOMOQT_CORE_EXPORT RequestResult {
         enum class Status {
             Accepted,
             Disabled,

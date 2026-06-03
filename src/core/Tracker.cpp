@@ -1,5 +1,7 @@
 #include <MatomoQt/Tracker.h>
 
+#include <utility>
+
 namespace MatomoQt {
 
 namespace {
@@ -58,9 +60,8 @@ void Tracker::setEnabled(bool enabled) {
     emit enabledChanged(m_enabled);
 }
 
-RequestResult Tracker::trackPageView(const PageView &pageView) {
-    const auto validation = validateTrackingCall();
-    if (!validation.accepted()) {
+RequestResult Tracker::trackPageView(const PageView &pageView) const {
+    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
         return validation;
     }
 
@@ -71,9 +72,8 @@ RequestResult Tracker::trackPageView(const PageView &pageView) {
     return result(RequestResult::Status::Accepted);
 }
 
-RequestResult Tracker::trackEvent(const Event &event) {
-    const auto validation = validateTrackingCall();
-    if (!validation.accepted()) {
+RequestResult Tracker::trackEvent(const Event &event) const {
+    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
         return validation;
     }
 
@@ -84,7 +84,7 @@ RequestResult Tracker::trackEvent(const Event &event) {
     return result(RequestResult::Status::Accepted);
 }
 
-RequestResult Tracker::sendPing() {
+RequestResult Tracker::sendPing() const {
     return validateTrackingCall();
 }
 
@@ -98,15 +98,17 @@ RequestResult Tracker::validateTrackingCall() const {
     }
 
     switch (m_config.privacyMode) {
-        case PrivacyMode::Disabled:
+        using enum PrivacyMode;
+        using enum ConsentState;
+        case Disabled:
             return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("Tracking is disabled by privacy mode."));
-        case PrivacyMode::RequiresConsent:
-            if (m_consentState != ConsentState::Granted) {
+        case RequiresConsent:
+            if (m_consentState != Granted) {
                 return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("Tracking consent is required."));
             }
             break;
-        case PrivacyMode::ConsentExemptWithOptOut:
-            if (m_consentState == ConsentState::Denied || m_consentState == ConsentState::Withdrawn) {
+        case ConsentExemptWithOptOut:
+            if (m_consentState == Denied || m_consentState == Withdrawn) {
                 return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("User has opted out."));
             }
             break;
