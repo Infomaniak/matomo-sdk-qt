@@ -11,6 +11,11 @@ namespace MatomoQt {
  */
 class MATOMOQT_CORE_EXPORT ClientIdStore {
     public:
+        ClientIdStore() = default;
+        ClientIdStore(const ClientIdStore &) = delete;
+        ClientIdStore &operator=(const ClientIdStore &) = delete;
+        ClientIdStore(ClientIdStore &&) = delete;
+        ClientIdStore &operator=(ClientIdStore &&) = delete;
         virtual ~ClientIdStore();
 
         /** Returns the stored client ID, or an empty string when none exists. */

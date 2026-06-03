@@ -10,6 +10,11 @@ namespace MatomoQt {
  */
 class MATOMOQT_CORE_EXPORT ConsentStore {
     public:
+        ConsentStore() = default;
+        ConsentStore(const ConsentStore &) = delete;
+        ConsentStore &operator=(const ConsentStore &) = delete;
+        ConsentStore(ConsentStore &&) = delete;
+        ConsentStore &operator=(ConsentStore &&) = delete;
         virtual ~ConsentStore();
 
         /** Returns the stored consent state, or Unknown when none exists. */
