@@ -89,14 +89,19 @@ RUN apt-install \
 
 RUN python3 -m venv /opt/venv
 
-RUN /opt/venv/bin/pip install aqtinstall
+RUN /opt/venv/bin/pip install "aqtinstall<3.3"
 
 RUN /opt/venv/bin/pip install "conan>=2,<3"
 
 ENV PATH="/opt/venv/bin:${PATH}"
 
 RUN case "$ACTION_RUNNER_ARCH" in \
-        x64)   AQT_ARCH="linux_gcc_64" ;; \
+        x64) \
+            if [ "$QT_VERSION" = "6.2.3" ]; then \
+                AQT_ARCH="gcc_64"; \
+            else \
+                AQT_ARCH="linux_gcc_64"; \
+            fi ;; \
         arm64) AQT_ARCH="linux_gcc_arm64" ;; \
         *)     echo "Unsupported arch: $ACTION_RUNNER_ARCH" && exit 1 ;; \
     esac && \
