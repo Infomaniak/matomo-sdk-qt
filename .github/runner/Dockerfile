@@ -100,6 +100,7 @@ RUN case "$ACTION_RUNNER_ARCH" in \
         arm64) AQT_ARCH="linux_gcc_arm64" ;; \
         *)     echo "Unsupported arch: $ACTION_RUNNER_ARCH" && exit 1 ;; \
     esac && \
+    if [ "$QT_VERSION" = "6.2.3" ]; then QT_ARCHIVES=""; fi && \
     aqt install-qt linux desktop "$QT_VERSION" "$AQT_ARCH" -O "$QT_DIR" \
         ${QT_ARCHIVES:+--archives $QT_ARCHIVES} \
         ${QT_MODULES:+--modules $QT_MODULES} && \
