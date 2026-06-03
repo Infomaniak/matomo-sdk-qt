@@ -24,6 +24,18 @@ target_link_libraries(tst_requestbuilder
 
 add_test(NAME tst_requestbuilder COMMAND tst_requestbuilder)
 
+add_executable(tst_useragentbuilder tst_useragentbuilder.cpp)
+
+set_target_properties(tst_useragentbuilder PROPERTIES AUTOMOC ON)
+
+target_link_libraries(tst_useragentbuilder
+    PRIVATE
+        MatomoQt::Core
+        Qt6::Test
+)
+
+add_test(NAME tst_useragentbuilder COMMAND tst_useragentbuilder)
+
 add_executable(tst_public_api tst_public_api.cpp)
 
 target_link_libraries(tst_public_api
@@ -48,6 +60,7 @@ set(matomoqt_public_headers
     Tracker
     TrackerConfig
     TrackingRequest
+    UserAgentBuilder
     Version
 )
 

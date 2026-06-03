@@ -13,6 +13,7 @@ target_sources(MatomoQtCore
         RequestResult.cpp
         Tracker.cpp
         TrackerConfig.cpp
+        UserAgentBuilder.cpp
         Version.cpp
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ClientIdStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentState.h"
@@ -28,6 +29,7 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackingRequest.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/UserAgentBuilder.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"
 )
 
