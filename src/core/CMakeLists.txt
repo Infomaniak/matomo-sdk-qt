@@ -8,6 +8,8 @@ target_sources(MatomoQtCore
         CustomDimension.cpp
         Event.cpp
         PageView.cpp
+        RequestBuilder.cpp
+        RequestBuildResult.cpp
         RequestResult.cpp
         Tracker.cpp
         TrackerConfig.cpp
@@ -19,9 +21,13 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PageView.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyMode.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuilder.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildOptions.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackingRequest.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"
 )
 
