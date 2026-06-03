@@ -93,6 +93,18 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionU
         query.addQueryItem(QStringLiteral("_id"), options.clientId);
     }
 
+    if (!options.userAgent.trimmed().isEmpty()) {
+        query.addQueryItem(QStringLiteral("ua"), options.userAgent.trimmed());
+    }
+
+    if (!options.language.trimmed().isEmpty()) {
+        query.addQueryItem(QStringLiteral("lang"), options.language.trimmed());
+    }
+
+    if (!options.screenResolution.trimmed().isEmpty()) {
+        query.addQueryItem(QStringLiteral("res"), options.screenResolution.trimmed());
+    }
+
     if (auto payloadResult = addPayloadParameters(&query); !payloadResult.accepted()) {
         return payloadResult;
     }

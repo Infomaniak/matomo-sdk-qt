@@ -19,6 +19,7 @@ class RequestBuilderTest : public QObject {
         static void buildsPingQuery();
         static void includesValidClientId();
         static void rejectsInvalidClientId();
+        static void includesConfiguredClientContext();
         static void includesCustomDimensions();
         static void omitsEmptyOptionalFields();
         static void escapesReservedCharacters();
@@ -134,6 +135,23 @@ void RequestBuilderTest::rejectsInvalidClientId() {
     QVERIFY(notHex.request.url.isEmpty());
 }
 
+void RequestBuilderTest::includesConfiguredClientContext() {
+    const RequestBuilder builder(validConfig());
+    const auto result = builder.buildPageView({.path = QStringLiteral("settings")},
+                                              {
+                                                      .userAgent = QStringLiteral(" kDrive/4.0 Qt/6.8 Linux "),
+                                                      .language = QStringLiteral(" fr-CH,fr;q=0.9 "),
+                                                      .screenResolution = QStringLiteral(" 1920x1080 "),
+                                              });
+
+    QVERIFY(result.accepted());
+
+    const auto query = queryFor(result);
+    QCOMPARE(queryItemValue(query, QStringLiteral("ua")), QStringLiteral("kDrive/4.0 Qt/6.8 Linux"));
+    QCOMPARE(queryItemValue(query, QStringLiteral("lang")), QStringLiteral("fr-CH,fr;q=0.9"));
+    QCOMPARE(queryItemValue(query, QStringLiteral("res")), QStringLiteral("1920x1080"));
+}
+
 void RequestBuilderTest::includesCustomDimensions() {
     const RequestBuilder builder(validConfig());
     const auto result = builder.buildPageView({
@@ -170,6 +188,9 @@ void RequestBuilderTest::omitsEmptyOptionalFields() {
     QVERIFY(event.accepted());
     QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("e_n")));
     QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("e_v")));
+    QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("ua")));
+    QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("lang")));
+    QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("res")));
 }
 
 void RequestBuilderTest::escapesReservedCharacters() {
