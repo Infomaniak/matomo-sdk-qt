@@ -26,7 +26,7 @@ TrackerConfig Tracker::config() const {
 }
 
 void Tracker::setConfig(const TrackerConfig &config) {
-    if (m_config.endpoint == config.endpoint && m_config.siteId == config.siteId && m_config.privacyMode == config.privacyMode) {
+    if (m_config == config) {
         return;
     }
 
@@ -60,7 +60,7 @@ void Tracker::setEnabled(bool enabled) {
     emit enabledChanged(m_enabled);
 }
 
-RequestResult Tracker::trackPageView(const PageView &pageView) const {
+RequestResult Tracker::trackPageView(const PageView &pageView) {
     if (const auto validation = validateTrackingCall(); !validation.accepted()) {
         return validation;
     }
@@ -72,7 +72,7 @@ RequestResult Tracker::trackPageView(const PageView &pageView) const {
     return result(RequestResult::Status::Accepted);
 }
 
-RequestResult Tracker::trackEvent(const Event &event) const {
+RequestResult Tracker::trackEvent(const Event &event) {
     if (const auto validation = validateTrackingCall(); !validation.accepted()) {
         return validation;
     }
@@ -84,7 +84,7 @@ RequestResult Tracker::trackEvent(const Event &event) const {
     return result(RequestResult::Status::Accepted);
 }
 
-RequestResult Tracker::sendPing() const {
+RequestResult Tracker::sendPing() {
     return validateTrackingCall();
 }
 
