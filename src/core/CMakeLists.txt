@@ -3,10 +3,22 @@ add_library(MatomoQt::Core ALIAS MatomoQtCore)
 
 target_sources(MatomoQtCore
     PRIVATE
+        ClientIdStore.cpp
+        ConsentStore.cpp
+        CustomDimension.cpp
+        Event.cpp
+        PageView.cpp
         RequestResult.cpp
         Tracker.cpp
         TrackerConfig.cpp
         Version.cpp
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/ClientIdStore.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentState.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/CustomDimension.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/PageView.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyMode.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
