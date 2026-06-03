@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VALID_QT_VERSIONS=("6.2.3" "6.5.3" "6.8.3")
+VALID_QT_VERSIONS=("6.2.3" "6.5.3" "6.8.3" "6.11.1")
 VALID_UBUNTU_VERSIONS=("22.04" "24.04" "26.04")
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
