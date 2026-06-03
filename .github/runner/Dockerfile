@@ -129,14 +129,25 @@ WORKDIR $WORKING_DIR
 
 USER $USERNAME
 
-# The github token is here to avoid getting rate limited by the GitHub API when downloading the runner (60 requests per hour for unauthenticated requests, see https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2026-03-10#primary-rate-limit-for-unauthenticated-users)
+# The GitHub token is optional and only avoids unauthenticated API rate limits.
 RUN --mount=type=secret,id=github_token,mode=0444 \
     export RUNNER_ARCHIVE="actions-runner-linux-$ACTION_RUNNER_ARCH-$ACTION_RUNNER_TAG.tar.gz" && \
     export RUNNER_RELEASE_API="https://api.github.com/repos/actions/runner/releases/tags/v$ACTION_RUNNER_TAG" && \
-    export RUNNER_SHA256=$(curl -fsSL \
-        -H "Accept: application/vnd.github+json" \
-        -H "Authorization: Bearer $(cat /run/secrets/github_token)" \
-        "$RUNNER_RELEASE_API" | jq -r --arg name "$RUNNER_ARCHIVE" '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")') && \
+    export RUNNER_SHA256="" && \
+    if [ -s /run/secrets/github_token ]; then \
+        RUNNER_SHA256=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $(cat /run/secrets/github_token)" \
+            "$RUNNER_RELEASE_API" \
+            | jq -r --arg name "$RUNNER_ARCHIVE" '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")') || true; \
+    fi && \
+    if [ -z "$RUNNER_SHA256" ] || [ "$RUNNER_SHA256" = "null" ]; then \
+        RUNNER_SHA256=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            "$RUNNER_RELEASE_API" \
+            | jq -r --arg name "$RUNNER_ARCHIVE" '.assets[] | select(.name == $name) | .digest | sub("^sha256:"; "")'); \
+    fi && \
+    test -n "$RUNNER_SHA256" && test "$RUNNER_SHA256" != "null" && \
     curl -O -L "https://github.com/actions/runner/releases/download/v$ACTION_RUNNER_TAG/$RUNNER_ARCHIVE" && \
     echo "$RUNNER_SHA256  $RUNNER_ARCHIVE" | shasum -a 256 -c && \
     tar xzf "./$RUNNER_ARCHIVE" && \
