@@ -61,24 +61,24 @@ void Tracker::setEnabled(bool enabled) {
 }
 
 RequestResult Tracker::trackPageView(const PageView &pageView) {
-    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
-        return validation;
-    }
-
     if (!pageView.isValid()) {
         return result(RequestResult::Status::InvalidPayload, QStringLiteral("Page view path is required."));
+    }
+
+    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
+        return validation;
     }
 
     return result(RequestResult::Status::Accepted);
 }
 
 RequestResult Tracker::trackEvent(const Event &event) {
-    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
-        return validation;
-    }
-
     if (!event.isValid()) {
         return result(RequestResult::Status::InvalidPayload, QStringLiteral("Event category and action are required."));
+    }
+
+    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
+        return validation;
     }
 
     return result(RequestResult::Status::Accepted);
