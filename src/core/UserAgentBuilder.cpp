@@ -145,27 +145,6 @@ QString desktopPlatformComment(const UserAgentInfo &info) {
     return {};
 }
 
-UserAgentArchitecture architectureFromQt(QString architecture) {
-    architecture = architecture.toLower();
-
-    if (architecture == QStringLiteral("x86_64") || architecture == QStringLiteral("amd64")) {
-        return UserAgentArchitecture::X64;
-    }
-    if (architecture == QStringLiteral("i386") || architecture == QStringLiteral("i486") ||
-        architecture == QStringLiteral("i586") || architecture == QStringLiteral("i686") ||
-        architecture == QStringLiteral("x86")) {
-        return UserAgentArchitecture::X86;
-    }
-    if (architecture == QStringLiteral("arm64") || architecture == QStringLiteral("aarch64")) {
-        return UserAgentArchitecture::Arm64;
-    }
-    if (architecture.startsWith(QStringLiteral("arm"))) {
-        return UserAgentArchitecture::Arm;
-    }
-
-    return UserAgentArchitecture::Unknown;
-}
-
 QString currentOsVersion() {
     const auto version = QOperatingSystemVersion::current();
     if (version.majorVersion() < 0) {
@@ -185,6 +164,27 @@ QString currentOsVersion() {
 }
 
 } // namespace
+
+UserAgentArchitecture UserAgentBuilder::architectureFromQt(QString architecture) {
+    architecture = architecture.toLower();
+
+    if (architecture == QStringLiteral("x86_64") || architecture == QStringLiteral("amd64")) {
+        return UserAgentArchitecture::X64;
+    }
+    if (architecture == QStringLiteral("i386") || architecture == QStringLiteral("i486") ||
+        architecture == QStringLiteral("i586") || architecture == QStringLiteral("i686") ||
+        architecture == QStringLiteral("x86")) {
+        return UserAgentArchitecture::X86;
+    }
+    if (architecture == QStringLiteral("arm64") || architecture == QStringLiteral("aarch64")) {
+        return UserAgentArchitecture::Arm64;
+    }
+    if (architecture.startsWith(QStringLiteral("arm"))) {
+        return UserAgentArchitecture::Arm;
+    }
+
+    return UserAgentArchitecture::Unknown;
+}
 
 UserAgentInfo UserAgentBuilder::currentDesktopInfo(QString productName, QString productVersion) {
     UserAgentOperatingSystem operatingSystem = UserAgentOperatingSystem::Unknown;

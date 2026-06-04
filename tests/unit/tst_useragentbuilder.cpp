@@ -6,6 +6,8 @@
 
 using namespace MatomoQt;
 
+Q_DECLARE_METATYPE(MatomoQt::UserAgentArchitecture)
+
 namespace {
 
 class UserAgentBuilderTest : public QObject {
@@ -20,6 +22,8 @@ class UserAgentBuilderTest : public QObject {
         static void buildsMinimalUnknownOsUserAgent();
         static void normalizesProductToken();
         static void rejectsEmptyProductName();
+        static void mapsQtCpuArchitecture_data();
+        static void mapsQtCpuArchitecture();
         static void currentDesktopInfoIncludesApplicationAndQtVersion();
         static void requestBuilderSendsBuiltUserAgent();
 };
@@ -140,6 +144,31 @@ void UserAgentBuilderTest::rejectsEmptyProductName() {
     });
 
     QVERIFY(userAgent.isEmpty());
+}
+
+void UserAgentBuilderTest::mapsQtCpuArchitecture_data() {
+    QTest::addColumn<QString>("qtArchitecture");
+    QTest::addColumn<UserAgentArchitecture>("expected");
+
+    QTest::newRow("x86_64") << QStringLiteral("x86_64") << UserAgentArchitecture::X64;
+    QTest::newRow("amd64") << QStringLiteral("amd64") << UserAgentArchitecture::X64;
+    QTest::newRow("i386") << QStringLiteral("i386") << UserAgentArchitecture::X86;
+    QTest::newRow("i686") << QStringLiteral("i686") << UserAgentArchitecture::X86;
+    QTest::newRow("x86") << QStringLiteral("x86") << UserAgentArchitecture::X86;
+    QTest::newRow("arm64") << QStringLiteral("arm64") << UserAgentArchitecture::Arm64;
+    QTest::newRow("aarch64") << QStringLiteral("aarch64") << UserAgentArchitecture::Arm64;
+    QTest::newRow("armv7l") << QStringLiteral("armv7l") << UserAgentArchitecture::Arm;
+    QTest::newRow("arm") << QStringLiteral("arm") << UserAgentArchitecture::Arm;
+    QTest::newRow("normalizes case") << QStringLiteral("AArch64") << UserAgentArchitecture::Arm64;
+    QTest::newRow("unrecognized") << QStringLiteral("riscv64") << UserAgentArchitecture::Unknown;
+    QTest::newRow("empty") << QString() << UserAgentArchitecture::Unknown;
+}
+
+void UserAgentBuilderTest::mapsQtCpuArchitecture() {
+    QFETCH(QString, qtArchitecture);
+    QFETCH(UserAgentArchitecture, expected);
+
+    QCOMPARE(UserAgentBuilder::architectureFromQt(qtArchitecture), expected);
 }
 
 void UserAgentBuilderTest::currentDesktopInfoIncludesApplicationAndQtVersion() {
