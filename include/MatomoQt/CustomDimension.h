@@ -3,7 +3,7 @@
 #include <MatomoQt/Export.h>
 
 #include <QtCore/QString>
-#include <QtCore/QtTypes>
+#include <QtCore/qtypes.h>
 
 namespace MatomoQt {
 
