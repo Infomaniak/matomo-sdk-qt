@@ -3,8 +3,8 @@
 #include <MatomoQt/Export.h>
 #include <MatomoQt/PrivacyMode.h>
 
+#include <QtGlobal>
 #include <QtCore/QUrl>
-#include <QtCore/qtypes.h>
 
 namespace MatomoQt {
 

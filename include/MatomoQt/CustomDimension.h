@@ -2,8 +2,8 @@
 
 #include <MatomoQt/Export.h>
 
+#include <QtGlobal>
 #include <QtCore/QString>
-#include <QtCore/qtypes.h>
 
 namespace MatomoQt {
 
