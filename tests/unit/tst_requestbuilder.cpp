@@ -23,6 +23,8 @@ class RequestBuilderTest : public QObject {
         static void includesCustomDimensions();
         static void omitsEmptyOptionalFields();
         static void escapesReservedCharacters();
+        static void encodesSerializedUrlQuery();
+        static void acceptsLegacyPiwikEndpoint();
         static void dropsEndpointQueryParameters();
         static void rejectsInvalidConfig();
         static void rejectsInvalidPayload();
@@ -208,6 +210,33 @@ void RequestBuilderTest::escapesReservedCharacters() {
     QCOMPARE(queryItemValue(query, QStringLiteral("action_name")), QStringLiteral("A&B=C% /? é"));
     QCOMPARE(queryItemValue(query, QStringLiteral("dimension3")), QStringLiteral("x&y=z+é"));
     QCOMPARE(query.queryItems(QUrl::FullyDecoded).size(), 6);
+}
+
+void RequestBuilderTest::encodesSerializedUrlQuery() {
+    const RequestBuilder builder(validConfig());
+    const auto result = builder.buildPageView({
+            .path = QStringLiteral("settings/a value + x"),
+            .actionName = QStringLiteral("A&B=C% /?"),
+            .customDimensions = {{.id = 3, .value = QStringLiteral("x&y=z+")}},
+    });
+
+    QVERIFY(result.accepted());
+
+    const auto encodedUrl = result.request.url.toEncoded();
+    QVERIFY2(encodedUrl.contains("url=kdrive://app/settings/a%20value%20+%20x"), encodedUrl.constData());
+    QVERIFY2(encodedUrl.contains("action_name=A%26B%3DC%25%20/?"), encodedUrl.constData());
+    QVERIFY2(encodedUrl.contains("dimension3=x%26y%3Dz+"), encodedUrl.constData());
+}
+
+void RequestBuilderTest::acceptsLegacyPiwikEndpoint() {
+    auto config = validConfig();
+    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/piwik.php"));
+
+    const RequestBuilder builder(config);
+    const auto result = builder.buildPing(QStringLiteral("settings"));
+
+    QVERIFY(result.accepted());
+    QCOMPARE(result.request.url.adjusted(QUrl::RemoveQuery), QUrl(QStringLiteral("https://matomo.example.com/piwik.php")));
 }
 
 void RequestBuilderTest::dropsEndpointQueryParameters() {
