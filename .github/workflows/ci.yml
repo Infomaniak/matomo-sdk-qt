@@ -45,44 +45,27 @@ jobs:
           cmake -S . -B build
           -DCMAKE_BUILD_TYPE=Release
           -DMATOMOQT_BUILD_QML=OFF
-          -DMATOMOQT_BUILD_TESTS=OFF
+          -DMATOMOQT_BUILD_TESTS=ON
           -DMATOMOQT_BUILD_EXAMPLES=OFF
           -DMATOMOQT_WARNINGS_AS_ERRORS=ON
 
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
       - name: Install
         run: cmake --install build --prefix "$RUNNER_TEMP/matomoqt-install"
 
       - name: Configure downstream consumer
-        run: |
-          mkdir -p "$RUNNER_TEMP/matomoqt-consumer"
-
-          cat > "$RUNNER_TEMP/matomoqt-consumer/CMakeLists.txt" <<'EOF'
-          cmake_minimum_required(VERSION 3.16)
-
-          project(MatomoQtConsumer LANGUAGES CXX)
-
-          find_package(MatomoQt CONFIG REQUIRED)
-
-          add_executable(matomoqt_consumer main.cpp)
-          target_link_libraries(matomoqt_consumer PRIVATE MatomoQt::Core)
-          EOF
-
-          cat > "$RUNNER_TEMP/matomoqt-consumer/main.cpp" <<'EOF'
-          #include <MatomoQt/Version.h>
-
-          #include <QtCore/QString>
-
-          int main() {
-              return MatomoQt::versionString().isEmpty() ? 1 : 0;
-          }
-          EOF
-
-          cmake -S "$RUNNER_TEMP/matomoqt-consumer" -B "$RUNNER_TEMP/matomoqt-consumer-build" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install"
+        run: >
+          cmake -S tests/consumer -B "$RUNNER_TEMP/matomoqt-consumer-build"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install"
 
       - name: Build downstream consumer
         run: cmake --build "$RUNNER_TEMP/matomoqt-consumer-build" --parallel
+
+      - name: Run downstream consumer
+        run: "$RUNNER_TEMP/matomoqt-consumer-build/matomoqt_consumer"

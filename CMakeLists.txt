@@ -18,4 +18,9 @@ find_package(Qt6 REQUIRED COMPONENTS Core Network)
 
 add_subdirectory(src/core)
 
+if(MATOMOQT_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
 include(cmake/MatomoQtInstall.cmake)
