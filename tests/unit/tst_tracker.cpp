@@ -26,7 +26,8 @@ class TrackerTest : public QObject {
         static void trackerDoesNotAcceptWithoutConsentByDefault();
 
         static void trackerAcceptsCallsAfterConsent();
-        static void trackerRejectsInvalidConfigBeforePayload();
+        static void trackerRejectsInvalidPayloadBeforeTrackerState();
+        static void trackerRejectsInvalidConfigForValidTrackingCalls();
         static void trackerRejectsInvalidPayloadAfterConsent();
         static void trackerDoesNotEmitSignalsForUnchangedValues();
         static void trackerEmitsConfigChangedForChangedConfig();
@@ -64,9 +65,15 @@ void TrackerTest::configValidityRequiresEndpointAndSiteId() {
 void TrackerTest::payloadValidityUsesRequiredFields() {
     QVERIFY(!PageView{}.isValid());
     QVERIFY(PageView{.path = QStringLiteral("preferences")}.isValid());
-    const PageView pageViewWithInvalidDimension{.path = QStringLiteral("preferences"), .customDimensions = {{.id = 0}}};
+    const PageView pageViewWithInvalidDimension{
+            .path = QStringLiteral("preferences"),
+            .customDimensions = {{.id = 1}, {.id = 0}},
+    };
     QVERIFY(!pageViewWithInvalidDimension.isValid());
-    const PageView pageViewWithValidDimension{.path = QStringLiteral("preferences"), .customDimensions = {{.id = 1}}};
+    const PageView pageViewWithValidDimension{
+            .path = QStringLiteral("preferences"),
+            .customDimensions = {{.id = 1}, {.id = 2}},
+    };
     QVERIFY(pageViewWithValidDimension.isValid());
 
     QVERIFY(!Event{}.isValid());
@@ -82,7 +89,7 @@ void TrackerTest::payloadValidityUsesRequiredFields() {
     const Event eventWithInvalidDimension{
             .category = QStringLiteral("preferences"),
             .action = QStringLiteral("click"),
-            .customDimensions = {{.id = 0}},
+            .customDimensions = {{.id = 1}, {.id = 0}},
     };
     QVERIFY(!eventWithInvalidDimension.isValid());
     const Event validEvent{.category = QStringLiteral("preferences"), .action = QStringLiteral("click")};
@@ -91,7 +98,7 @@ void TrackerTest::payloadValidityUsesRequiredFields() {
             .category = QStringLiteral("preferences"),
             .action = QStringLiteral("click"),
             .value = 0.0,
-            .customDimensions = {{.id = 1}},
+            .customDimensions = {{.id = 1}, {.id = 2}},
     };
     QVERIFY(eventWithValidOptionalFields.isValid());
 
@@ -131,12 +138,20 @@ void TrackerTest::trackerAcceptsCallsAfterConsent() {
     QCOMPARE(tracker.sendPing().status, RequestResult::Status::Accepted);
 }
 
-void TrackerTest::trackerRejectsInvalidConfigBeforePayload() {
+void TrackerTest::trackerRejectsInvalidPayloadBeforeTrackerState() {
+    Tracker tracker;
+
+    QCOMPARE(tracker.trackPageView({}).status, RequestResult::Status::InvalidPayload);
+    QCOMPARE(tracker.trackEvent({}).status, RequestResult::Status::InvalidPayload);
+}
+
+void TrackerTest::trackerRejectsInvalidConfigForValidTrackingCalls() {
     Tracker tracker;
     tracker.setConsentState(ConsentState::Granted);
 
-    QCOMPARE(tracker.trackPageView({}).status, RequestResult::Status::InvalidConfig);
-    QCOMPARE(tracker.trackEvent({}).status, RequestResult::Status::InvalidConfig);
+    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestResult::Status::InvalidConfig);
+    QCOMPARE(tracker.trackEvent({.category = QStringLiteral("preferences"), .action = QStringLiteral("click")}).status,
+             RequestResult::Status::InvalidConfig);
     QCOMPARE(tracker.sendPing().status, RequestResult::Status::InvalidConfig);
 }
 
@@ -150,11 +165,11 @@ void TrackerTest::trackerRejectsInvalidPayloadAfterConsent() {
 
     QCOMPARE(tracker.trackPageView({}).status, RequestResult::Status::InvalidPayload);
     QCOMPARE(tracker.trackEvent({}).status, RequestResult::Status::InvalidPayload);
-    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences"), .customDimensions = {{.id = 0}}}).status,
+    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences"), .customDimensions = {{.id = 1}, {.id = 0}}}).status,
              RequestResult::Status::InvalidPayload);
     QCOMPARE(tracker.trackEvent({.category = QStringLiteral("preferences"),
                                  .action = QStringLiteral("click"),
-                                 .customDimensions = {{.id = 0}}})
+                                 .customDimensions = {{.id = 1}, {.id = 0}}})
                      .status,
              RequestResult::Status::InvalidPayload);
     QCOMPARE(tracker.trackEvent({.category = QStringLiteral("preferences"),
