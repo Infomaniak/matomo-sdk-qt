@@ -16,6 +16,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network)
 
+if(MATOMOQT_ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+    else()
+        message(WARNING "MATOMOQT_ENABLE_COVERAGE is only supported with GCC/Clang; ignoring.")
+    endif()
+endif()
+
 add_subdirectory(src/core)
 
 if(MATOMOQT_BUILD_TESTS)
