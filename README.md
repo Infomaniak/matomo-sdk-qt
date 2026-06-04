@@ -17,8 +17,9 @@ C++ Qt SDK for the Matomo Tracking HTTP API.
 
 ## Project Context
 
-This project was started to support Matomo integration in the kDrive desktop
-application on Linux.
+This project was started to support Matomo integration in the
+[kDrive desktop](https://github.com/Infomaniak/desktop-kDrive) application on
+Linux.
 
 The SDK itself is not kDrive-specific. It is designed to stay reusable by any
 Qt or QML application that needs to send tracking data to a Matomo instance.
