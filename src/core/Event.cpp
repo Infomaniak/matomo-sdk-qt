@@ -6,11 +6,15 @@
 namespace MatomoQt {
 
 bool Event::isValid() const {
-    const bool hasValidValue = !value.has_value() || std::isfinite(*value);
-    const bool hasValidDimensions = std::ranges::all_of(customDimensions,
-                                                [](const CustomDimension &dimension) { return dimension.isValid(); });
+    if (category.trimmed().isEmpty() || action.trimmed().isEmpty()) {
+        return false;
+    }
 
-    return !category.trimmed().isEmpty() && !action.trimmed().isEmpty() && hasValidValue && hasValidDimensions;
+    if (value.has_value() && !std::isfinite(*value)) {
+        return false;
+    }
+
+    return std::ranges::all_of(customDimensions, [](const CustomDimension &dimension) { return dimension.isValid(); });
 }
 
 } // namespace MatomoQt
