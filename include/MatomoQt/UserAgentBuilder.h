@@ -50,6 +50,7 @@ class MATOMOQT_CORE_EXPORT UserAgentBuilder {
     public:
         [[nodiscard]] static UserAgentInfo currentDesktopInfo(QString productName, QString productVersion);
         [[nodiscard]] static QString buildDesktopUserAgent(const UserAgentInfo &info);
+        [[nodiscard]] static UserAgentArchitecture architectureFromQt(QString architecture);
 };
 
 } // namespace MatomoQt

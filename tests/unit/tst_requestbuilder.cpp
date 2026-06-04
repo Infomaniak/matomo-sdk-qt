@@ -4,6 +4,7 @@
 #include <QtTest/QtTest>
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 
 using namespace MatomoQt;
@@ -17,6 +18,7 @@ class RequestBuilderTest : public QObject {
         static void buildsPageViewQuery();
         static void buildsEventQuery();
         static void buildsPingQuery();
+        static void configRoundTripsThroughAccessors();
         static void includesValidClientId();
         static void rejectsInvalidClientId();
         static void includesConfiguredClientContext();
@@ -27,6 +29,10 @@ class RequestBuilderTest : public QObject {
         static void acceptsLegacyPiwikEndpoint();
         static void dropsEndpointQueryParameters();
         static void rejectsInvalidConfig();
+        static void rejectsInvalidConfigAcrossBuilders();
+        static void rejectsInvalidClientIdAcrossBuilders();
+        static void includesClientContextAcrossBuilders();
+        static void rejectsDuplicateEventDimensions();
         static void rejectsInvalidPayload();
 };
 
@@ -56,6 +62,37 @@ QString queryItemValue(const QUrlQuery &query, const QString &key) {
 bool hasQueryItem(const QUrlQuery &query, const QString &key) {
     const auto items = query.queryItems(QUrl::FullyDecoded);
     return std::ranges::any_of(items, [&key](const auto &item) { return item.first == key; });
+}
+
+/**
+ * A single tracking request built through one of the public builder entry points.
+ *
+ * The same valid payload is expressed for every builder so that behaviour shared by all three
+ * (config validation, client context, client ID handling) can be asserted uniformly. buildRequest
+ * is a template instantiated once per builder, so these shared paths must be exercised through each
+ * entry point to be fully covered.
+ */
+struct NamedBuilderCall {
+        QByteArray name;
+        std::function<RequestBuildResult(const RequestBuilder &, const RequestBuildOptions &)> build;
+};
+
+QList<NamedBuilderCall> allBuilders() {
+    return {
+            {"buildPageView",
+             [](const RequestBuilder &builder, const RequestBuildOptions &options) {
+                 return builder.buildPageView({.path = QStringLiteral("settings")}, options);
+             }},
+            {"buildEvent",
+             [](const RequestBuilder &builder, const RequestBuildOptions &options) {
+                 return builder.buildEvent({.category = QStringLiteral("preferences"), .action = QStringLiteral("click")},
+                                           options);
+             }},
+            {"buildPing",
+             [](const RequestBuilder &builder, const RequestBuildOptions &options) {
+                 return builder.buildPing(QStringLiteral("settings"), options);
+             }},
+    };
 }
 
 } // namespace
@@ -115,6 +152,18 @@ void RequestBuilderTest::buildsPingQuery() {
     QCOMPARE(queryItemValue(query, QStringLiteral("url")), QStringLiteral("kdrive://app/settings/account"));
     QCOMPARE(queryItemValue(query, QStringLiteral("ping")), QStringLiteral("1"));
     QVERIFY(!hasQueryItem(query, QStringLiteral("ca")));
+}
+
+void RequestBuilderTest::configRoundTripsThroughAccessors() {
+    const auto config = validConfig();
+    RequestBuilder builder(config);
+    QCOMPARE(builder.config(), config);
+
+    auto replacement = validConfig();
+    replacement.siteId = 7;
+    replacement.endpoint = QUrl(QStringLiteral("https://analytics.example.org/matomo.php"));
+    builder.setConfig(replacement);
+    QCOMPARE(builder.config(), replacement);
 }
 
 void RequestBuilderTest::includesValidClientId() {
@@ -274,6 +323,65 @@ void RequestBuilderTest::rejectsInvalidConfig() {
     builder.setConfig(config);
     result = builder.buildPing(QStringLiteral("settings"));
     QCOMPARE(result.result.status, RequestResult::Status::InvalidConfig);
+    QVERIFY(result.request.url.isEmpty());
+}
+
+void RequestBuilderTest::rejectsInvalidConfigAcrossBuilders() {
+    for (const auto &builderCall: allBuilders()) {
+        auto missingEndpoint = validConfig();
+        missingEndpoint.endpoint = QUrl();
+        const auto endpointResult = builderCall.build(RequestBuilder(missingEndpoint), {});
+        QVERIFY2(endpointResult.result.status == RequestResult::Status::InvalidConfig, builderCall.name.constData());
+        QVERIFY2(endpointResult.request.url.isEmpty(), builderCall.name.constData());
+
+        auto relativeActionUrlBase = validConfig();
+        relativeActionUrlBase.actionUrlBase = QUrl(QStringLiteral("settings"));
+        const auto actionUrlResult = builderCall.build(RequestBuilder(relativeActionUrlBase), {});
+        QVERIFY2(actionUrlResult.result.status == RequestResult::Status::InvalidConfig, builderCall.name.constData());
+        QVERIFY2(actionUrlResult.request.url.isEmpty(), builderCall.name.constData());
+    }
+}
+
+void RequestBuilderTest::rejectsInvalidClientIdAcrossBuilders() {
+    const RequestBuilder builder(validConfig());
+
+    for (const auto &builderCall: allBuilders()) {
+        const auto result = builderCall.build(builder, {.clientId = QStringLiteral("0123456789abcde")});
+        QVERIFY2(result.result.status == RequestResult::Status::InvalidPayload, builderCall.name.constData());
+        QVERIFY2(result.request.url.isEmpty(), builderCall.name.constData());
+    }
+}
+
+void RequestBuilderTest::includesClientContextAcrossBuilders() {
+    const RequestBuilder builder(validConfig());
+    const RequestBuildOptions options{
+            .clientId = QStringLiteral("0123456789abcdef"),
+            .userAgent = QStringLiteral("kDrive/4.0 Qt/6.8 Linux"),
+            .language = QStringLiteral("fr-CH,fr;q=0.9"),
+            .screenResolution = QStringLiteral("1920x1080"),
+    };
+
+    for (const auto &builderCall: allBuilders()) {
+        const auto result = builderCall.build(builder, options);
+        QVERIFY2(result.accepted(), builderCall.name.constData());
+
+        const auto query = queryFor(result);
+        QVERIFY2(queryItemValue(query, QStringLiteral("_id")) == options.clientId, builderCall.name.constData());
+        QVERIFY2(queryItemValue(query, QStringLiteral("ua")) == options.userAgent, builderCall.name.constData());
+        QVERIFY2(queryItemValue(query, QStringLiteral("lang")) == options.language, builderCall.name.constData());
+        QVERIFY2(queryItemValue(query, QStringLiteral("res")) == options.screenResolution, builderCall.name.constData());
+    }
+}
+
+void RequestBuilderTest::rejectsDuplicateEventDimensions() {
+    const RequestBuilder builder(validConfig());
+    const auto result = builder.buildEvent({
+            .category = QStringLiteral("preferences"),
+            .action = QStringLiteral("click"),
+            .customDimensions = {{.id = 1, .value = QStringLiteral("a")}, {.id = 1, .value = QStringLiteral("b")}},
+    });
+
+    QCOMPARE(result.result.status, RequestResult::Status::InvalidPayload);
     QVERIFY(result.request.url.isEmpty());
 }
 
