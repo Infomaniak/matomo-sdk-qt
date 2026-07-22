@@ -19,6 +19,7 @@ class UserAgentBuilderTest : public QObject {
         static void buildsMacOSArmUserAgent();
         static void buildsLinuxX64UserAgent();
         static void buildsLinuxArm64UserAgent();
+        static void buildsLinuxUnknownArchUserAgent();
         static void buildsMinimalUnknownOsUserAgent();
         static void normalizesProductToken();
         static void rejectsEmptyProductName();
@@ -110,6 +111,20 @@ void UserAgentBuilderTest::buildsLinuxArm64UserAgent() {
     });
 
     QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux aarch64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxUnknownArchUserAgent() {
+    // An unsupported CPU (e.g. riscv64 maps to Unknown) must not be mislabelled as x86_64;
+    // emit a generic Linux comment so DeviceDetector still attributes the platform correctly.
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::Unknown,
+            .qtVersion = QStringLiteral("6.11.1"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux) kDrive/4.0.1 Qt/6.11.1"));
 }
 
 void UserAgentBuilderTest::buildsMinimalUnknownOsUserAgent() {

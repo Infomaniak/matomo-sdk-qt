@@ -134,8 +134,9 @@ QString desktopPlatformComment(const UserAgentInfo &info) {
                 case UserAgentArchitecture::Arm64:
                     return QStringLiteral("X11; Linux aarch64");
                 case UserAgentArchitecture::X64:
-                case UserAgentArchitecture::Unknown:
                     return QStringLiteral("X11; Linux x86_64");
+                case UserAgentArchitecture::Unknown:
+                    return QStringLiteral("X11; Linux");
             }
             break;
         case UserAgentOperatingSystem::Unknown:
