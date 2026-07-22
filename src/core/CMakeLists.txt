@@ -8,6 +8,7 @@ target_sources(MatomoQtCore
         CustomDimension.cpp
         Event.cpp
         PageView.cpp
+        PrivacyController.cpp
         RequestBuilder.cpp
         RequestBuildResult.cpp
         RequestResult.cpp
@@ -21,6 +22,7 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/CustomDimension.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PageView.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyController.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyMode.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuilder.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildOptions.h"

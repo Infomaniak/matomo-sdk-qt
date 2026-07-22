@@ -1,4 +1,5 @@
 #include <MatomoQt/Tracker.h>
+#include <MatomoQt/PrivacyController.h>
 
 #include <utility>
 
@@ -97,21 +98,8 @@ RequestResult Tracker::validateTrackingCall() const {
         return result(RequestResult::Status::InvalidConfig, QStringLiteral("Tracker endpoint and site ID are required."));
     }
 
-    switch (m_config.privacyMode) {
-        using enum PrivacyMode;
-        using enum ConsentState;
-        case Disabled:
-            return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("Tracking is disabled by privacy mode."));
-        case RequiresConsent:
-            if (m_consentState != Granted) {
-                return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("Tracking consent is required."));
-            }
-            break;
-        case ConsentExemptWithOptOut:
-            if (m_consentState == Denied || m_consentState == Withdrawn) {
-                return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("User has opted out."));
-            }
-            break;
+    if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentState)) {
+        return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("Tracking blocked by privacy settings."));
     }
 
     return result(RequestResult::Status::Accepted);
