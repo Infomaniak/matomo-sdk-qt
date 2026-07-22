@@ -42,7 +42,9 @@ bool addCustomDimensions(QUrlQuery &query, const QList<CustomDimension> &dimensi
 
     for (const auto &dimension: dimensions) {
         if (!dimension.isValid()) {
-            *errorMessage = QStringLiteral("Custom dimension ID must be between 1 and 999.");
+            *errorMessage = QStringLiteral("Custom dimension ID must be between %1 and %2.")
+                                    .arg(CustomDimension::MinId)
+                                    .arg(CustomDimension::MaxId);
             return false;
         }
 
