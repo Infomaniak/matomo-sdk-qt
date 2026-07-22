@@ -26,6 +26,7 @@ class RequestBuilderTest : public QObject {
         static void omitsEmptyOptionalFields();
         static void escapesReservedCharacters();
         static void encodesSerializedUrlQuery();
+        static void escapesLiteralPlusSoMatomoDoesNotDecodeItAsSpace();
         static void acceptsLegacyPiwikEndpoint();
         static void dropsEndpointQueryParameters();
         static void rejectsInvalidConfig();
@@ -272,9 +273,27 @@ void RequestBuilderTest::encodesSerializedUrlQuery() {
     QVERIFY(result.accepted());
 
     const auto encodedUrl = result.request.url.toEncoded();
-    QVERIFY2(encodedUrl.contains("url=kdrive://app/settings/a%20value%20+%20x"), encodedUrl.constData());
+    QVERIFY2(encodedUrl.contains("url=kdrive://app/settings/a%20value%20%2B%20x"), encodedUrl.constData());
     QVERIFY2(encodedUrl.contains("action_name=A%26B%3DC%25%20/?"), encodedUrl.constData());
-    QVERIFY2(encodedUrl.contains("dimension3=x%26y%3Dz+"), encodedUrl.constData());
+    QVERIFY2(encodedUrl.contains("dimension3=x%26y%3Dz%2B"), encodedUrl.constData());
+}
+
+void RequestBuilderTest::escapesLiteralPlusSoMatomoDoesNotDecodeItAsSpace() {
+    // Matomo runs on PHP, which decodes '+' in a query value as a space. A literal '+' must
+    // therefore be percent-encoded as %2B, otherwise "C++" would reach Matomo as "C  ".
+    const RequestBuilder builder(validConfig());
+    const auto result = builder.buildPageView({
+            .path = QStringLiteral("settings"),
+            .actionName = QStringLiteral("C++ tooling"),
+            .customDimensions = {{.id = 3, .value = QStringLiteral("1+2")}},
+    });
+
+    QVERIFY(result.accepted());
+
+    const auto encodedUrl = result.request.url.toEncoded();
+    QVERIFY2(encodedUrl.contains("action_name=C%2B%2B%20tooling"), encodedUrl.constData());
+    QVERIFY2(encodedUrl.contains("dimension3=1%2B2"), encodedUrl.constData());
+    QVERIFY2(!encodedUrl.contains('+'), encodedUrl.constData());
 }
 
 void RequestBuilderTest::acceptsLegacyPiwikEndpoint() {

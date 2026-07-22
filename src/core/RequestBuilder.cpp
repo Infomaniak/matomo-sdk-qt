@@ -111,7 +111,9 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionU
         return payloadResult;
     }
 
-    url.setQuery(query);
+    // QUrlQuery leaves literal '+' unencoded, but Matomo (PHP) decodes '+' as a space in query
+    // values, corrupting values like "C++" or exponent-formatted event values (e.g. 1e+20).
+    url.setQuery(query.toString(QUrl::FullyEncoded).replace(QLatin1Char('+'), QLatin1String("%2B")), QUrl::StrictMode);
     return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, TrackingRequest{url}};
 }
 
