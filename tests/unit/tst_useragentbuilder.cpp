@@ -20,6 +20,7 @@ class UserAgentBuilderTest : public QObject {
         static void buildsLinuxX64UserAgent();
         static void buildsLinuxArm64UserAgent();
         static void buildsLinuxUnknownArchUserAgent();
+        static void trimsWindowsNtVersionToMajorMinor();
         static void buildsMinimalUnknownOsUserAgent();
         static void normalizesProductToken();
         static void rejectsEmptyProductName();
@@ -125,6 +126,21 @@ void UserAgentBuilderTest::buildsLinuxUnknownArchUserAgent() {
     });
 
     QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::trimsWindowsNtVersionToMajorMinor() {
+    // QOperatingSystemVersion exposes the Windows build number as the micro component, but real
+    // UAs (and DeviceDetector's NT-version map) only expect "Windows NT <major>.<minor>".
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Windows,
+            .operatingSystemVersion = QStringLiteral("10.0.19045"),
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (Windows NT 10.0; Win64; x64) kDrive/4.0.1 Qt/6.11.1"));
 }
 
 void UserAgentBuilderTest::buildsMinimalUnknownOsUserAgent() {

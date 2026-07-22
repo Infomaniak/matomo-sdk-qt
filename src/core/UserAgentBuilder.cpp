@@ -102,10 +102,16 @@ QString osVersionPart(QString version, const QChar separator) {
     return normalized;
 }
 
+QString windowsNtVersion(const QString &operatingSystemVersion) {
+    const QString version = osVersionPart(operatingSystemVersion, QLatin1Char('.'));
+    const auto components = version.split(QLatin1Char('.'), Qt::SkipEmptyParts);
+    return components.size() <= 2 ? version : components.mid(0, 2).join(QLatin1Char('.'));
+}
+
 QString desktopPlatformComment(const UserAgentInfo &info) {
     switch (info.operatingSystem) {
         case UserAgentOperatingSystem::Windows: {
-            const QString version = osVersionPart(info.operatingSystemVersion, QLatin1Char('.'));
+            const QString version = windowsNtVersion(info.operatingSystemVersion);
             if (info.architecture == UserAgentArchitecture::X64 || info.architecture == UserAgentArchitecture::Arm64) {
                 return QStringLiteral("Windows NT %1; Win64; x64").arg(version.isEmpty() ? QStringLiteral("10.0") : version);
             }
