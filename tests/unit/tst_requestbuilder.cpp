@@ -27,6 +27,8 @@ class RequestBuilderTest : public QObject {
         static void escapesReservedCharacters();
         static void encodesSerializedUrlQuery();
         static void escapesLiteralPlusSoMatomoDoesNotDecodeItAsSpace();
+        static void rejectsAbsolutePageViewPath();
+        static void rejectsAbsolutePingPath();
         static void acceptsLegacyPiwikEndpoint();
         static void dropsEndpointQueryParameters();
         static void rejectsInvalidConfig();
@@ -294,6 +296,28 @@ void RequestBuilderTest::escapesLiteralPlusSoMatomoDoesNotDecodeItAsSpace() {
     QVERIFY2(encodedUrl.contains("action_name=C%2B%2B%20tooling"), encodedUrl.constData());
     QVERIFY2(encodedUrl.contains("dimension3=1%2B2"), encodedUrl.constData());
     QVERIFY2(!encodedUrl.contains('+'), encodedUrl.constData());
+}
+
+void RequestBuilderTest::rejectsAbsolutePageViewPath() {
+    // A page view path is an application path resolved under actionUrlBase. A path carrying its
+    // own scheme or authority would silently escape that base, so it must be rejected.
+    const RequestBuilder builder(validConfig());
+
+    for (const auto &escapingPath: {QStringLiteral("https://other/x"), QStringLiteral("//other/x")}) {
+        const auto result = builder.buildPageView({.path = escapingPath});
+        QVERIFY2(result.result.status == RequestResult::Status::InvalidPayload, qPrintable(escapingPath));
+        QVERIFY2(result.request.url.isEmpty(), qPrintable(escapingPath));
+    }
+}
+
+void RequestBuilderTest::rejectsAbsolutePingPath() {
+    const RequestBuilder builder(validConfig());
+
+    for (const auto &escapingPath: {QStringLiteral("https://other/x"), QStringLiteral("//other/x")}) {
+        const auto result = builder.buildPing(escapingPath);
+        QVERIFY2(result.result.status == RequestResult::Status::InvalidPayload, qPrintable(escapingPath));
+        QVERIFY2(result.request.url.isEmpty(), qPrintable(escapingPath));
+    }
 }
 
 void RequestBuilderTest::acceptsLegacyPiwikEndpoint() {

@@ -28,6 +28,10 @@ bool hasValidActionUrlBase(const QUrl &url) {
     return url.isValid() && !url.isEmpty() && !url.isRelative();
 }
 
+bool isRelativeApplicationPath(const QUrl &reference) {
+    return reference.scheme().isEmpty() && reference.authority().isEmpty();
+}
+
 bool hasValidClientId(const QString &clientId) {
     static const QRegularExpression clientIdPattern(QStringLiteral("^[0-9A-Fa-f]{16}$"));
     return clientId.isEmpty() || clientIdPattern.match(clientId).hasMatch();
@@ -135,18 +139,22 @@ RequestBuildResult RequestBuilder::buildPageView(const PageView &pageView, const
         return invalidPayload(QStringLiteral("Page view path and custom dimensions must be valid."));
     }
 
-    return buildRequest(m_config, m_config.actionUrlBase.resolved(QUrl(pageView.path.trimmed())), options,
-                        [&pageView](QUrlQuery *query) {
-                            if (!pageView.actionName.trimmed().isEmpty()) {
-                                query->addQueryItem(QStringLiteral("action_name"), pageView.actionName.trimmed());
-                            }
+    const QUrl actionReference(pageView.path.trimmed());
+    if (!isRelativeApplicationPath(actionReference)) {
+        return invalidPayload(QStringLiteral("Page view path must be a relative application path."));
+    }
 
-                            if (QString errorMessage; !addCustomDimensions(*query, pageView.customDimensions, &errorMessage)) {
-                                return invalidPayload(std::move(errorMessage));
-                            }
+    return buildRequest(m_config, m_config.actionUrlBase.resolved(actionReference), options, [&pageView](QUrlQuery *query) {
+        if (!pageView.actionName.trimmed().isEmpty()) {
+            query->addQueryItem(QStringLiteral("action_name"), pageView.actionName.trimmed());
+        }
 
-                            return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, {}};
-                        });
+        if (QString errorMessage; !addCustomDimensions(*query, pageView.customDimensions, &errorMessage)) {
+            return invalidPayload(std::move(errorMessage));
+        }
+
+        return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, {}};
+    });
 }
 
 RequestBuildResult RequestBuilder::buildEvent(const Event &event, const RequestBuildOptions &options) const {
@@ -180,7 +188,12 @@ RequestBuildResult RequestBuilder::buildPing(const QString &path, const RequestB
         return invalidPayload(QStringLiteral("Tracking request path is required."));
     }
 
-    return buildRequest(m_config, m_config.actionUrlBase.resolved(QUrl(path.trimmed())), options, [](QUrlQuery *query) {
+    const QUrl actionReference(path.trimmed());
+    if (!isRelativeApplicationPath(actionReference)) {
+        return invalidPayload(QStringLiteral("Tracking request path must be a relative application path."));
+    }
+
+    return buildRequest(m_config, m_config.actionUrlBase.resolved(actionReference), options, [](QUrlQuery *query) {
         query->addQueryItem(QStringLiteral("ping"), QStringLiteral("1"));
         return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, {}};
     });
