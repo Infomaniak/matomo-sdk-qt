@@ -2,6 +2,8 @@
 #include <MatomoQt/ConsentStore.h>
 #include <MatomoQt/CustomDimension.h>
 #include <MatomoQt/Event.h>
+#include <MatomoQt/InMemoryClientIdStore.h>
+#include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/PageView.h>
 #include <MatomoQt/PrivacyMode.h>
 #include <MatomoQt/RequestResult.h>
@@ -33,6 +35,13 @@ class TrackerTest : public QObject {
         static void trackerEmitsConfigChangedForChangedConfig();
 
         static void trackerSupportsDisabledAndOptOutModes();
+
+        static void trackerPersistsConsentStateToStore();
+        static void trackerReadsConsentStateFromStoreOnSwap();
+        static void trackerEmitsConsentChangedOnStoreSwap();
+        static void trackerResetClientIdClearsStore();
+        static void trackerDenialClearsPersistedClientId();
+        static void trackerWithdrawalClearsPersistedClientId();
 };
 } // namespace
 
@@ -233,6 +242,93 @@ void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
 
     tracker.setEnabled(false);
     QCOMPARE(tracker.sendPing().status, RequestResult::Status::Disabled);
+}
+
+void TrackerTest::trackerPersistsConsentStateToStore() {
+    InMemoryConsentStore store;
+    Tracker tracker;
+    tracker.setConsentStore(&store);
+
+    tracker.setConsentState(ConsentState::Granted);
+    QCOMPARE(store.consentState(), ConsentState::Granted);
+    QCOMPARE(tracker.consentState(), ConsentState::Granted);
+
+    tracker.setConsentState(ConsentState::Denied);
+    QCOMPARE(store.consentState(), ConsentState::Denied);
+    QCOMPARE(tracker.consentState(), ConsentState::Denied);
+}
+
+void TrackerTest::trackerReadsConsentStateFromStoreOnSwap() {
+    InMemoryConsentStore store;
+    store.setConsentState(ConsentState::Granted);
+
+    Tracker tracker;
+    QCOMPARE(tracker.consentState(), ConsentState::Unknown);
+
+    tracker.setConsentStore(&store);
+    QCOMPARE(tracker.consentState(), ConsentState::Granted);
+}
+
+void TrackerTest::trackerEmitsConsentChangedOnStoreSwap() {
+    InMemoryConsentStore grantedStore;
+    grantedStore.setConsentState(ConsentState::Granted);
+
+    Tracker tracker;
+    QSignalSpy spy(&tracker, &Tracker::consentStateChanged);
+
+    tracker.setConsentStore(&grantedStore);
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(0).value<ConsentState>(), ConsentState::Granted);
+}
+
+void TrackerTest::trackerResetClientIdClearsStore() {
+    InMemoryClientIdStore store;
+    store.setClientId(QStringLiteral("abc123"));
+
+    Tracker tracker;
+    tracker.setClientIdStore(&store);
+    tracker.resetClientId();
+
+    QVERIFY(store.clientId().isEmpty());
+}
+
+void TrackerTest::trackerDenialClearsPersistedClientId() {
+    TrackerConfig config;
+    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.siteId = 1;
+    config.privacyMode = PrivacyMode::ConsentExemptWithOptOut;
+
+    InMemoryClientIdStore store;
+    store.setClientId(QStringLiteral("abc123"));
+
+    Tracker tracker(config);
+    tracker.setClientIdStore(&store);
+    tracker.setConsentState(ConsentState::Granted);
+
+    QVERIFY(tracker.trackPageView({.path = QStringLiteral("preferences")}).accepted());
+
+    tracker.setConsentState(ConsentState::Denied);
+    QVERIFY(store.clientId().isEmpty());
+    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestResult::Status::BlockedByPrivacy);
+}
+
+void TrackerTest::trackerWithdrawalClearsPersistedClientId() {
+    TrackerConfig config;
+    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.siteId = 1;
+
+    InMemoryClientIdStore store;
+    store.setClientId(QStringLiteral("abc123"));
+
+    Tracker tracker(config);
+    tracker.setClientIdStore(&store);
+    tracker.setConsentState(ConsentState::Granted);
+
+    QVERIFY(tracker.trackPageView({.path = QStringLiteral("preferences")}).accepted());
+
+    tracker.setConsentState(ConsentState::Withdrawn);
+    QVERIFY(store.clientId().isEmpty());
+    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestResult::Status::BlockedByPrivacy);
 }
 
 QTEST_MAIN(TrackerTest)
