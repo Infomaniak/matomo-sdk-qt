@@ -1,6 +1,7 @@
 #pragma once
 
 #include <MatomoQt/ConsentState.h>
+#include <MatomoQt/Export.h>
 #include <MatomoQt/PrivacyMode.h>
 
 namespace MatomoQt {
@@ -16,7 +17,7 @@ namespace MatomoQt {
  * - RequiresConsent          -> allowed only when Granted
  * - ConsentExemptWithOptOut  -> allowed unless Denied or Withdrawn
  */
-struct PrivacyController {
+struct MATOMOQT_CORE_EXPORT PrivacyController {
     /** Returns true only if the given mode and state allow tracking. */
     [[nodiscard]] static bool isTrackingAllowed(PrivacyMode mode, ConsentState state);
 };
