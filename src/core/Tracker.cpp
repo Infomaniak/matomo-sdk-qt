@@ -69,15 +69,34 @@ void Tracker::setEnabled(bool enabled) {
 
 void Tracker::setConsentStore(ConsentStore *store) {
     const auto oldState = m_consentStore->consentState();
+    m_defaultConsentStore.setConsentState(m_consentStore->consentState());
     m_consentStore = store ? store : &m_defaultConsentStore;
 
-    if (const auto newState = m_consentStore->consentState(); oldState != newState) {
+    const auto newState = m_consentStore->consentState();
+    if (newState == ConsentState::Denied || newState == ConsentState::Withdrawn) {
+        m_clientIdStore->clearClientId();
+    }
+    if (oldState != newState) {
         emit consentStateChanged(newState);
     }
 }
 
 void Tracker::setClientIdStore(ClientIdStore *store) {
+    m_defaultClientIdStore.setClientId(m_clientIdStore->clientId());
     m_clientIdStore = store ? store : &m_defaultClientIdStore;
+
+    if (m_consentStore->consentState() == ConsentState::Denied
+        || m_consentStore->consentState() == ConsentState::Withdrawn) {
+        m_clientIdStore->clearClientId();
+    }
+}
+
+QString Tracker::clientId() const {
+    return m_clientIdStore->clientId();
+}
+
+void Tracker::setClientId(const QString &clientId) const {
+    m_clientIdStore->setClientId(clientId);
 }
 
 void Tracker::resetClientId() const {

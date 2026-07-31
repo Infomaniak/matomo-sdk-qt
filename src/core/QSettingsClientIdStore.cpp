@@ -4,6 +4,10 @@
 
 namespace MatomoQt {
 
+namespace {
+    const auto kClientIdKey = QStringLiteral("MatomoQt/clientId");
+}
+
 QSettingsClientIdStore::QSettingsClientIdStore(QSettings *settings) :
     m_settings(settings) {}
 
@@ -12,7 +16,7 @@ QString QSettingsClientIdStore::clientId() const {
         return QString{};
     }
 
-    return m_settings->value(QStringLiteral("clientId")).toString();
+    return m_settings->value(kClientIdKey).toString();
 }
 
 void QSettingsClientIdStore::setClientId(const QString &clientId) {
@@ -20,7 +24,7 @@ void QSettingsClientIdStore::setClientId(const QString &clientId) {
         return;
     }
 
-    m_settings->setValue(QStringLiteral("clientId"), clientId);
+    m_settings->setValue(kClientIdKey, clientId);
 }
 
 void QSettingsClientIdStore::clearClientId() {
@@ -28,7 +32,7 @@ void QSettingsClientIdStore::clearClientId() {
         return;
     }
 
-    m_settings->remove(QStringLiteral("clientId"));
+    m_settings->remove(kClientIdKey);
 }
 
 } // namespace MatomoQt
