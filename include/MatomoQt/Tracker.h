@@ -52,6 +52,12 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         /** Sets an optional persistent client ID store. nullptr resets to the default in-memory store. */
         void setClientIdStore(ClientIdStore *store);
 
+        /** Returns the current client ID, read from the active store. */
+        [[nodiscard]] QString clientId() const;
+
+        /** Persists the client ID, written to the active store. */
+        void setClientId(const QString &clientId) const;
+
         /** Resets the client ID, clearing the active store. */
         void resetClientId() const;
 
