@@ -11,8 +11,8 @@
 C++ Qt SDK for the Matomo Tracking HTTP API.
 
 > Status: early development. The SDK exposes the C++ core target and can build
-> deterministic Matomo Tracking HTTP API URLs. It does not send HTTP requests
-> yet; network dispatching, QML support, examples and packaging are still in
+> deterministic Matomo Tracking HTTP API URLs and send them over HTTP via
+> `NetworkDispatcher`. QML support, examples and packaging are still in
 > progress.
 
 ## Project Context
@@ -56,8 +56,13 @@ The public API includes:
   generated URL;
 - `UserAgentBuilder` can generate desktop User-Agent strings with
   DeviceDetector-compatible OS tokens.
+- `NetworkDispatcher` sends built tracking URLs over HTTP with
+  `QNetworkAccessManager`, timeout, circuit breaker and `rand` cache-busting;
+  it never silently ignores SSL errors and never logs full tracking URLs.
 
-`Tracker` validates local state only. It does not send HTTP requests yet.
+`Tracker` validates local state only. It does not send HTTP requests yet;
+network dispatching is handled by the standalone `NetworkDispatcher`, which
+will be wired to the `Tracker` in a later milestone.
 
 ## Non-Goals
 
