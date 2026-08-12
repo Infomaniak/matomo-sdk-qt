@@ -24,4 +24,19 @@ struct MATOMOQT_CORE_EXPORT DispatchResult {
         [[nodiscard]] bool success() const;
 };
 
+    [[nodiscard]]  inline QString enumToString(const DispatchResult::Status state) {
+        switch (state) {
+            case DispatchResult::Status::Success:
+                return QStringLiteral("Success");
+            case DispatchResult::Status::Timeout:
+                return QStringLiteral("Timeout");
+            case DispatchResult::Status::NetworkError:
+                return QStringLiteral("NetworkError");
+            case DispatchResult::Status::SslError:
+                return QStringLiteral("SslError");
+            case DispatchResult::Status::CircuitBreakerOpen:
+                return QStringLiteral("CircuitBreakerOpen");
+        }
+        return QStringLiteral("Unknown");
+    }
 } // namespace MatomoQt
