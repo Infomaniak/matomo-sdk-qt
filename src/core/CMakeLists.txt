@@ -6,9 +6,12 @@ target_sources(MatomoQtCore
         ClientIdStore.cpp
         ConsentStore.cpp
         CustomDimension.cpp
+        DispatchResult.cpp
         Event.cpp
         InMemoryClientIdStore.cpp
         InMemoryConsentStore.cpp
+        Logging.cpp
+        NetworkDispatcher.cpp
         PageView.cpp
         PrivacyController.cpp
         QSettingsClientIdStore.cpp
@@ -24,9 +27,13 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentState.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/CustomDimension.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/DispatchResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryClientIdStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryConsentStore.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/Logging.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/NetworkDispatcher.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/NetworkDispatcherConfig.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PageView.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyController.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyMode.h"

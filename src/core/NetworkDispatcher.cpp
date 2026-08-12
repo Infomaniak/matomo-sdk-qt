@@ -1,0 +1,230 @@
+#include <MatomoQt/NetworkDispatcher.h>
+
+#include <MatomoQt/Logging.h>
+
+#include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
+
+#include <QtCore/QRandomGenerator>
+#include <QtCore/QTimer>
+#include <QtCore/QUrlQuery>
+
+#include <utility>
+
+namespace MatomoQt {
+
+namespace {
+
+constexpr int kMinTimeoutMs = 100;
+
+DispatchResult makeResult(const DispatchResult::Status status, QString message, const int httpStatus = 0) {
+    return DispatchResult{.status = status, .httpStatus = httpStatus, .message = std::move(message)};
+}
+
+QUrl addCacheBuster(QUrl url) {
+    QUrlQuery query(url);
+    query.addQueryItem(QStringLiteral("rand"), QString::number(QRandomGenerator::global()->generate()));
+    url.setQuery(query);
+    return url;
+}
+
+} // namespace
+
+NetworkDispatcher::NetworkDispatcher(QObject *parent) :
+    QObject(parent),
+    m_nam(new QNetworkAccessManager(this)),
+    m_ownsNam(true) {}
+
+NetworkDispatcher::NetworkDispatcher(QNetworkAccessManager *nam, QObject *parent) :
+    QObject(parent),
+    m_nam(nam),
+    m_ownsNam(false) {
+    if (m_nam == nullptr) {
+        m_nam = new QNetworkAccessManager(this);
+        m_ownsNam = true;
+    }
+}
+
+NetworkDispatcher::~NetworkDispatcher() {
+    for (auto it = m_pendingReplies.begin(); it != m_pendingReplies.end(); ++it) {
+        QNetworkReply *reply = it.key();
+        if (it.value().timer != nullptr) {
+            it.value().timer->stop();
+        }
+        reply->abort();
+    }
+}
+
+NetworkDispatcherConfig NetworkDispatcher::config() const {
+    return m_config;
+}
+
+void NetworkDispatcher::setConfig(const NetworkDispatcherConfig &config) {
+    if (m_config == config) {
+        return;
+    }
+
+    m_config = config;
+    resetCircuitBreaker();
+    emit configChanged();
+}
+
+bool NetworkDispatcher::isCircuitBreakerOpen() const {
+    return m_circuitBreakerOpen;
+}
+
+void NetworkDispatcher::resetCircuitBreaker() {
+    m_consecutiveFailures = 0;
+    setOpen(false);
+}
+
+void NetworkDispatcher::dispatch(const QUrl &url) {
+    if (m_circuitBreakerOpen) {
+        qCDebug(matomoSdk) << "dispatch blocked by circuit breaker";
+        emit dispatchFinished(makeResult(DispatchResult::Status::CircuitBreakerOpen,
+                                          QStringLiteral("Circuit breaker is open.")));
+        return;
+    }
+
+    if (!url.isValid() || url.isEmpty()) {
+        qCDebug(matomoSdk) << "dispatch rejected: invalid URL";
+        emit dispatchFinished(makeResult(DispatchResult::Status::NetworkError,
+                                          QStringLiteral("Tracking URL is invalid.")));
+        return;
+    }
+
+    const QUrl dispatchUrl = addCacheBuster(url);
+    QNetworkRequest request(dispatchUrl);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    QNetworkReply *reply = m_nam->get(request);
+
+    auto *timer = new QTimer(this);
+    timer->setSingleShot(true);
+    const int timeoutMs = m_config.timeoutMs > 0 ? m_config.timeoutMs : 0;
+    if (timeoutMs >= kMinTimeoutMs) {
+        timer->start(timeoutMs);
+    }
+
+    m_pendingReplies.insert(reply, PendingReply{timer});
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        handleReplyFinished(reply);
+    });
+
+    connect(timer, &QTimer::timeout, this, [this, reply]() {
+        handleTimeout(reply);
+    });
+
+    connect(reply, &QNetworkReply::sslErrors, this, [](const QList<QSslError> &) {
+        // SSL errors are never ignored. The reply will fail when finished.
+        qCDebug(matomoSdk) << "SSL errors detected on reply";
+    });
+}
+
+void NetworkDispatcher::handleReplyFinished(QNetworkReply *reply) {
+    if (!m_pendingReplies.contains(reply)) {
+        return;
+    }
+
+    cleanupReply(reply);
+
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    if (reply->error() == QNetworkReply::NoError) {
+        if (httpStatus >= 200 && httpStatus < 300) {
+            qCDebug(matomoSdk) << "dispatch succeeded with HTTP" << httpStatus;
+            recordSuccess();
+            emit dispatchFinished(makeResult(DispatchResult::Status::Success, {}, httpStatus));
+        } else {
+            qCDebug(matomoSdk) << "dispatch failed with HTTP" << httpStatus;
+            recordFailure(DispatchResult::Status::NetworkError,
+                          QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
+                          httpStatus);
+            emit dispatchFinished(makeResult(DispatchResult::Status::NetworkError,
+                                             QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
+                                             httpStatus));
+        }
+    } else if (reply->error() == QNetworkReply::OperationCanceledError) {
+        // Timeout already handled by handleTimeout; if the reply was aborted
+        // during destruction, do not emit a result.
+        qCDebug(matomoSdk) << "dispatch cancelled";
+    } else if (reply->error() == QNetworkReply::SslHandshakeFailedError) {
+        qCDebug(matomoSdk) << "dispatch failed: SSL error";
+        recordFailure(DispatchResult::Status::SslError, QStringLiteral("SSL handshake failed."));
+        emit dispatchFinished(makeResult(DispatchResult::Status::SslError, QStringLiteral("SSL handshake failed.")));
+    } else if (httpStatus > 0) {
+        // HTTP response received but with an error status (e.g. 4xx, 5xx).
+        qCDebug(matomoSdk) << "dispatch failed with HTTP" << httpStatus;
+        recordFailure(DispatchResult::Status::NetworkError,
+                      QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
+                      httpStatus);
+        emit dispatchFinished(makeResult(DispatchResult::Status::NetworkError,
+                                         QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
+                                         httpStatus));
+    } else {
+        qCDebug(matomoSdk) << "dispatch failed: network error";
+        recordFailure(DispatchResult::Status::NetworkError, reply->errorString());
+        emit dispatchFinished(makeResult(DispatchResult::Status::NetworkError, reply->errorString()));
+    }
+
+    reply->deleteLater();
+}
+
+void NetworkDispatcher::handleTimeout(QNetworkReply *reply) {
+    if (!m_pendingReplies.contains(reply)) {
+        return;
+    }
+
+    qCDebug(matomoSdk) << "dispatch timed out";
+    cleanupReply(reply);
+    reply->abort();
+
+    recordFailure(DispatchResult::Status::Timeout, QStringLiteral("Request timed out."));
+    emit dispatchFinished(makeResult(DispatchResult::Status::Timeout, QStringLiteral("Request timed out.")));
+
+    // The abort will trigger finished(); handleReplyFinished will see
+    // OperationCanceledError and skip emitting a duplicate result.
+    reply->deleteLater();
+}
+
+void NetworkDispatcher::recordSuccess() {
+    m_consecutiveFailures = 0;
+    setOpen(false);
+}
+
+void NetworkDispatcher::recordFailure(DispatchResult::Status status, const QString &message, int httpStatus) {
+    Q_UNUSED(status)
+    Q_UNUSED(message)
+    Q_UNUSED(httpStatus)
+
+    ++m_consecutiveFailures;
+
+    if (m_config.maxConsecutiveFailures > 0 && m_consecutiveFailures >= m_config.maxConsecutiveFailures) {
+        setOpen(true);
+    }
+}
+
+void NetworkDispatcher::setOpen(bool open) {
+    if (m_circuitBreakerOpen == open) {
+        return;
+    }
+
+    m_circuitBreakerOpen = open;
+    emit circuitBreakerChanged(m_circuitBreakerOpen);
+}
+
+void NetworkDispatcher::cleanupReply(QNetworkReply *reply) {
+    const auto it = m_pendingReplies.find(reply);
+    if (it == m_pendingReplies.end()) {
+        return;
+    }
+
+    if (it.value().timer != nullptr) {
+        it.value().timer->stop();
+        it.value().timer->deleteLater();
+    }
+    m_pendingReplies.erase(it);
+}
+
+} // namespace MatomoQt

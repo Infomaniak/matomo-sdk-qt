@@ -74,9 +74,13 @@ set(matomoqt_public_headers
     ConsentState
     ConsentStore
     CustomDimension
+    DispatchResult
     Event
     InMemoryClientIdStore
     InMemoryConsentStore
+    Logging
+    NetworkDispatcher
+    NetworkDispatcherConfig
     PageView
     PrivacyController
     PrivacyMode
