@@ -1,8 +1,10 @@
 #include <MatomoQt/UserAgentBuilder.h>
 
+#include <QtCore/QFile>
 #include <QtCore/QOperatingSystemVersion>
 #include <QtCore/QStringList>
 #include <QtCore/QSysInfo>
+#include <QtCore/QTextStream>
 
 #include <utility>
 
@@ -131,20 +133,39 @@ QString desktopPlatformComment(const UserAgentInfo &info) {
             }
             return QStringLiteral("Macintosh; %1 Mac OS X %2").arg(cpu, version);
         }
-        case UserAgentOperatingSystem::Linux:
+        case UserAgentOperatingSystem::Linux: {
+            QString platform;
             switch (info.architecture) {
                 case UserAgentArchitecture::X86:
-                    return QStringLiteral("X11; Linux i686");
+                    platform = QStringLiteral("X11; Linux i686");
+                    break;
                 case UserAgentArchitecture::Arm:
-                    return QStringLiteral("X11; Linux armv7l");
+                    platform = QStringLiteral("X11; Linux armv7l");
+                    break;
                 case UserAgentArchitecture::Arm64:
-                    return QStringLiteral("X11; Linux aarch64");
+                    platform = QStringLiteral("X11; Linux aarch64");
+                    break;
                 case UserAgentArchitecture::X64:
-                    return QStringLiteral("X11; Linux x86_64");
+                    platform = QStringLiteral("X11; Linux x86_64");
+                    break;
                 case UserAgentArchitecture::Unknown:
-                    return QStringLiteral("X11; Linux");
+                    platform = QStringLiteral("X11; Linux");
+                    break;
             }
-            break;
+
+            const QString distro = info.linuxDistro.trimmed();
+            if (distro.isEmpty()) {
+                return platform;
+            }
+
+            const auto sep = QStringLiteral("; ");
+            const qsizetype insertPos = platform.indexOf(sep);
+            if (insertPos < 0) {
+                return platform;
+            }
+
+            return platform.left(insertPos + sep.size()) + distro + sep + platform.mid(insertPos + sep.size());
+        }
         case UserAgentOperatingSystem::Unknown:
             return {};
     }
@@ -194,7 +215,7 @@ UserAgentArchitecture UserAgentBuilder::architectureFromQt(QString architecture)
 }
 
 UserAgentInfo UserAgentBuilder::currentDesktopInfo(QString productName, QString productVersion) {
-    UserAgentOperatingSystem operatingSystem = UserAgentOperatingSystem::Unknown;
+    auto operatingSystem = UserAgentOperatingSystem::Unknown;
 
 #if defined(Q_OS_WIN)
     operatingSystem = UserAgentOperatingSystem::Windows;
@@ -204,7 +225,7 @@ UserAgentInfo UserAgentBuilder::currentDesktopInfo(QString productName, QString 
     operatingSystem = UserAgentOperatingSystem::Linux;
 #endif
 
-    return UserAgentInfo{
+    UserAgentInfo info{
             .productName = std::move(productName),
             .productVersion = std::move(productVersion),
             .operatingSystem = operatingSystem,
@@ -212,6 +233,38 @@ UserAgentInfo UserAgentBuilder::currentDesktopInfo(QString productName, QString 
             .architecture = architectureFromQt(QSysInfo::currentCpuArchitecture()),
             .qtVersion = QStringLiteral(QT_VERSION_STR),
     };
+
+    if (operatingSystem == UserAgentOperatingSystem::Linux) {
+        info.linuxDistro = currentLinuxDistro();
+    }
+
+    return info;
+}
+
+QString UserAgentBuilder::currentLinuxDistro() {
+#if !defined(Q_OS_LINUX)
+    return {};
+#else
+    QFile file(QStringLiteral("/etc/os-release"));
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+
+    QTextStream stream(&file);
+    for (QString line = stream.readLine(); !line.isNull(); line = stream.readLine()) {
+        if (!line.startsWith(QStringLiteral("NAME="))) {
+            continue;
+        }
+
+        QString value = line.mid(5).trimmed();
+        if (value.size() >= 2 && value.front() == QLatin1Char('"') && value.back() == QLatin1Char('"')) {
+            value = value.mid(1, value.size() - 2);
+        }
+        return value.trimmed();
+    }
+
+    return {};
+#endif
 }
 
 QString UserAgentBuilder::buildDesktopUserAgent(const UserAgentInfo &info) {

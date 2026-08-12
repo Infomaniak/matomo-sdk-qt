@@ -20,6 +20,11 @@ class UserAgentBuilderTest : public QObject {
         static void buildsLinuxX64UserAgent();
         static void buildsLinuxArm64UserAgent();
         static void buildsLinuxUnknownArchUserAgent();
+        static void buildsLinuxX64WithDistro();
+        static void buildsLinuxArm64WithDistro();
+        static void buildsLinuxUnknownArchWithDistro();
+        static void buildsLinuxX64WithMultiWordDistro();
+        static void buildsLinuxX64WithEmptyDistroFallsBack();
         static void trimsWindowsNtVersionToMajorMinor();
         static void buildsMinimalUnknownOsUserAgent();
         static void normalizesProductToken();
@@ -126,6 +131,71 @@ void UserAgentBuilderTest::buildsLinuxUnknownArchUserAgent() {
     });
 
     QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxX64WithDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux x86_64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxArm64WithDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::Arm64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux aarch64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxUnknownArchWithDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::Unknown,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxX64WithMultiWordDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Linux Mint"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux Mint; Linux x86_64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxX64WithEmptyDistroFallsBack() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("  "),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux x86_64) kDrive/4.0.1 Qt/6.11.1"));
 }
 
 void UserAgentBuilderTest::trimsWindowsNtVersionToMajorMinor() {
