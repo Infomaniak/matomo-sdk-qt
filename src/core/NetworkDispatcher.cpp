@@ -2,6 +2,7 @@
 
 #include <MatomoQt/Logging.h>
 
+#include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 
@@ -14,8 +15,6 @@
 namespace MatomoQt {
 
 namespace {
-
-constexpr int kMinTimeoutMs = 100;
 
 DispatchResult makeResult(const DispatchResult::Status status, QString message, const int httpStatus = 0) {
     return DispatchResult{.status = status, .httpStatus = httpStatus, .message = std::move(message)};
@@ -51,6 +50,7 @@ NetworkDispatcher::~NetworkDispatcher() {
         if (it.value().timer != nullptr) {
             it.value().timer->stop();
         }
+        disconnect(reply, nullptr, this, nullptr);
         reply->abort();
     }
 }
@@ -101,9 +101,8 @@ void NetworkDispatcher::dispatch(const QUrl &url) {
 
     auto *timer = new QTimer(this);
     timer->setSingleShot(true);
-    const int timeoutMs = m_config.timeoutMs > 0 ? m_config.timeoutMs : 0;
-    if (timeoutMs >= kMinTimeoutMs) {
-        timer->start(timeoutMs);
+    if (m_config.timeoutMs > 0) {
+        timer->start(m_config.timeoutMs);
     }
 
     m_pendingReplies.insert(reply, PendingReply{timer});
