@@ -192,7 +192,8 @@ void NetworkDispatcher::recordSuccess() {
     setOpen(false);
 }
 
-void NetworkDispatcher::recordFailure(DispatchResult::Status status, const QString &message, int httpStatus) {
+void NetworkDispatcher::recordFailure(const DispatchResult::Status status, const QString &message, const int httpStatus) {
+    //Following parameters might be use later for better handling
     Q_UNUSED(status)
     Q_UNUSED(message)
     Q_UNUSED(httpStatus)
