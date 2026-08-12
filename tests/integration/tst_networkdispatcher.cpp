@@ -2,13 +2,12 @@
 #include <MatomoQt/NetworkDispatcher.h>
 #include <MatomoQt/NetworkDispatcherConfig.h>
 
+#include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QTcpServer>
+#include <QtNetwork/QTcpSocket>
 #include <QtTest/QtTest>
 
-#include <chrono>
-
 using namespace MatomoQt;
-using namespace std::chrono_literals;
 
 namespace {
 
@@ -73,8 +72,10 @@ class TestHttpServer : public QObject {
         }
 
         void readRequest(QTcpSocket *socket) {
-            const QByteArray data = socket->readAll();
-            if (data.isEmpty()) {
+            QByteArray data = socket->property("requestData").toByteArray();
+            data += socket->readAll();
+            if (!data.contains("\r\n\r\n")) {
+                socket->setProperty("requestData", data);
                 return;
             }
 
@@ -151,7 +152,7 @@ void NetworkDispatcherTest::dispatchSucceedsOn2xx() {
 
     dispatcher.dispatch(server.url());
 
-    QVERIFY(finishedSpy.wait(5s));
+    QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
@@ -171,7 +172,7 @@ void NetworkDispatcherTest::dispatchFailsOnConnectionRefused() {
     dispatcher.dispatch(url);
 
     // Connection refused may be reported quickly; allow up to 5 s.
-    QVERIFY(finishedSpy.wait(5s));
+    QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
@@ -195,7 +196,7 @@ void NetworkDispatcherTest::dispatchFailsOnTimeout() {
 
     dispatcher.dispatch(server.url());
 
-    QVERIFY(finishedSpy.wait(5s));
+    QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
@@ -218,7 +219,7 @@ void NetworkDispatcherTest::dispatchFailsOnNon2xxResponse() {
 
     dispatcher.dispatch(server.url());
 
-    QVERIFY(finishedSpy.wait(5s));
+    QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
@@ -244,7 +245,7 @@ void NetworkDispatcherTest::circuitBreakerOpensAfterConsecutiveFailures() {
     for (int i = 0; i < 3; ++i) {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(server.url());
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
     }
 
     // The circuit breaker should have opened after the 3rd failure
@@ -265,7 +266,7 @@ void NetworkDispatcherTest::circuitBreakerBlocksDispatchWhenOpen() {
     {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(QUrl(QStringLiteral("http://127.0.0.1:1/matomo.php")));
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
     }
 
     QVERIFY(dispatcher.isCircuitBreakerOpen());
@@ -276,7 +277,7 @@ void NetworkDispatcherTest::circuitBreakerBlocksDispatchWhenOpen() {
 
     // The CircuitBreakerOpen result is emitted immediately (synchronously via
     // queued signal); we still need to process the event loop.
-    QVERIFY(finishedSpy.count() == 1 || finishedSpy.wait(1s));
+    QVERIFY(finishedSpy.count() == 1 || finishedSpy.wait(1000));
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
@@ -298,7 +299,7 @@ void NetworkDispatcherTest::circuitBreakerResetsOnManualReset() {
     {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(QUrl(QStringLiteral("http://127.0.0.1:1/matomo.php")));
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
     }
 
     QVERIFY(dispatcher.isCircuitBreakerOpen());
@@ -323,7 +324,7 @@ void NetworkDispatcherTest::circuitBreakerResetsOnConfigChange() {
     {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(QUrl(QStringLiteral("http://127.0.0.1:1/matomo.php")));
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
     }
 
     QVERIFY(dispatcher.isCircuitBreakerOpen());
@@ -360,7 +361,7 @@ void NetworkDispatcherTest::circuitBreakerResetsOnSuccess() {
     for (int i = 0; i < 4; ++i) {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(QUrl(QStringLiteral("http://127.0.0.1:1/matomo.php")));
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
     }
 
     QVERIFY(!dispatcher.isCircuitBreakerOpen());
@@ -369,7 +370,7 @@ void NetworkDispatcherTest::circuitBreakerResetsOnSuccess() {
     {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(server.url());
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
         const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
         QCOMPARE(result.status, DispatchResult::Status::Success);
     }
@@ -381,7 +382,7 @@ void NetworkDispatcherTest::circuitBreakerResetsOnSuccess() {
     {
         QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
         dispatcher.dispatch(QUrl(QStringLiteral("http://127.0.0.1:1/matomo.php")));
-        QVERIFY(finishedSpy.wait(5s));
+        QVERIFY(finishedSpy.wait(5000));
     }
 
     QVERIFY(!dispatcher.isCircuitBreakerOpen());
@@ -396,7 +397,7 @@ void NetworkDispatcherTest::cacheBusterRandIsAdded() {
 
     dispatcher.dispatch(server.url());
 
-    QVERIFY(finishedSpy.wait(5s));
+    QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
     // Verify the server received a request with the rand parameter
@@ -415,7 +416,7 @@ void NetworkDispatcherTest::customNetworkAccessManagerIsUsed() {
 
     dispatcher.dispatch(server.url());
 
-    QVERIFY(finishedSpy.wait(5s));
+    QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
