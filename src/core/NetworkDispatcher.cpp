@@ -205,7 +205,7 @@ void NetworkDispatcher::recordFailure(const DispatchResult::Status status, const
     }
 }
 
-void NetworkDispatcher::setOpen(bool open) {
+void NetworkDispatcher::setOpen(const bool open) {
     if (m_circuitBreakerOpen == open) {
         return;
     }
