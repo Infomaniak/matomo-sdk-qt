@@ -204,6 +204,10 @@ void Tracker::setUserAgent(const QString &userAgent) {
     m_userAgent = userAgent;
 }
 
+void Tracker::setNetworkDispatcherConfig(const NetworkDispatcherConfig &config) {
+    m_dispatcher->setConfig(config);
+}
+
 RequestResult Tracker::trackPageView(const PageView &pageView) {
     if (!pageView.isValid()) {
         recordBlocked();

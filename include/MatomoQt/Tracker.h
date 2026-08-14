@@ -26,6 +26,7 @@
 #include <MatomoQt/InMemoryClientIdStore.h>
 #include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/NetworkDispatcher.h>
+#include <MatomoQt/NetworkDispatcherConfig.h>
 #include <MatomoQt/PageView.h>
 #include <MatomoQt/RequestBuilder.h>
 #include <MatomoQt/RequestResult.h>
@@ -132,6 +133,12 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
          * build this with UserAgentBuilder or supply its own.
          */
         void setUserAgent(const QString &userAgent);
+
+        /** Sets the network dispatcher configuration (timeout, circuit breaker).
+         *
+         * Changing the configuration resets the circuit breaker.
+         */
+        void setNetworkDispatcherConfig(const NetworkDispatcherConfig &config);
 
     signals:
         void configChanged();
