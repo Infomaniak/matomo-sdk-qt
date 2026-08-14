@@ -162,6 +162,7 @@ void TrackerTest::trackerDoesNotAcceptWithoutConsentByDefault() {
 void TrackerTest::trackerAcceptsCallsAfterConsent() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     Tracker tracker(config);
@@ -255,6 +256,7 @@ void TrackerTest::trackerEmitsConfigChangedForChangedConfig() {
 void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
     config.privacyMode = PrivacyMode::Disabled;
 
@@ -335,11 +337,12 @@ void TrackerTest::trackerResetClientIdClearsStore() {
 void TrackerTest::trackerDenialClearsPersistedClientId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
     config.privacyMode = PrivacyMode::ConsentExemptWithOptOut;
 
     InMemoryClientIdStore store;
-    store.setClientId(QStringLiteral("abc123"));
+    store.setClientId(QStringLiteral("0123456789abcdef"));
 
     Tracker tracker(config);
     tracker.setClientIdStore(&store);
@@ -355,10 +358,11 @@ void TrackerTest::trackerDenialClearsPersistedClientId() {
 void TrackerTest::trackerWithdrawalClearsPersistedClientId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     InMemoryClientIdStore store;
-    store.setClientId(QStringLiteral("abc123"));
+    store.setClientId(QStringLiteral("0123456789abcdef"));
 
     Tracker tracker(config);
     tracker.setClientIdStore(&store);

@@ -27,7 +27,9 @@
 int main() {
     MatomoQt::TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
+    config.privacyMode = MatomoQt::PrivacyMode::ConsentExemptWithOptOut;
 
     MatomoQt::Tracker tracker(config);
     tracker.setConsentState(MatomoQt::ConsentState::Granted);

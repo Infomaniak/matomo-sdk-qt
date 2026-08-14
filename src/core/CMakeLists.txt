@@ -46,6 +46,7 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerStats.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackingRequest.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/UserAgentBuilder.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"

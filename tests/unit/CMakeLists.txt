@@ -94,6 +94,7 @@ set(matomoqt_public_headers
     RequestResult
     Tracker
     TrackerConfig
+    TrackerStats
     TrackingRequest
     UserAgentBuilder
     Version
