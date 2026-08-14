@@ -19,6 +19,8 @@
 
 #include <MatomoQt/Export.h>
 
+#include <cstdint>
+
 namespace MatomoQt {
 
 /** Runtime statistics for a Tracker instance.
