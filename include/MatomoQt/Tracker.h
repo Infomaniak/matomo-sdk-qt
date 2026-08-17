@@ -56,7 +56,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
     public:
         explicit Tracker(QObject *parent = nullptr);
         explicit Tracker(TrackerConfig config, QObject *parent = nullptr);
-        explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, QObject *parent = nullptr);
+        explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, QObject *parent);
         ~Tracker() override;
 
         /** Returns the current tracker configuration. */
