@@ -157,6 +157,7 @@ class TrackerIntegrationTest : public QObject {
         void disabledTrackerDoesNotDispatch();
         void pageViewIdIsPresentOnPageView();
         void pageViewIdIsReusedOnEvent();
+        void pageViewIdClearedAfterConsentDenial();
         void forceNewVisitAddsNewVisitParam();
         void customDimensionAppearsInRequest();
         void clearCustomDimensionRemovesFromRequest();
@@ -329,6 +330,35 @@ void TrackerIntegrationTest::pageViewIdIsReusedOnEvent() {
     const auto eventQuery = queryFor(server.lastRequestPath());
     const QString eventPvId = queryValue(eventQuery, QStringLiteral("pv_id"));
     QCOMPARE(eventPvId, pageViewPvId);
+}
+
+void TrackerIntegrationTest::pageViewIdClearedAfterConsentDenial() {
+    TestHttpServer server;
+    QVERIFY(server.start());
+
+    TrackerConfig config = validConfig(server.url());
+    config.privacyMode = PrivacyMode::RequiresConsent;
+
+    Tracker tracker(config);
+    tracker.setConsentState(ConsentState::Granted);
+
+    QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
+    (void) tracker.trackPageView({.path = QStringLiteral("page1")});
+    QVERIFY(dispatchSpy.wait(5000));
+
+    const auto pvQuery = queryFor(server.lastRequestPath());
+    const QString pageViewPvId = queryValue(pvQuery, QStringLiteral("pv_id"));
+    QVERIFY(!pageViewPvId.isEmpty());
+
+    tracker.setConsentState(ConsentState::Denied);
+    tracker.setConsentState(ConsentState::Granted);
+
+    dispatchSpy.clear();
+    (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("act")});
+    QVERIFY(dispatchSpy.wait(5000));
+
+    const auto eventQuery = queryFor(server.lastRequestPath());
+    QVERIFY(!hasQueryItem(eventQuery, QStringLiteral("pv_id")));
 }
 
 void TrackerIntegrationTest::forceNewVisitAddsNewVisitParam() {

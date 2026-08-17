@@ -105,7 +105,7 @@ void Tracker::setConsentState(const ConsentState state) {
     m_consentStore->setConsentState(state);
 
     if (state == ConsentState::Denied || state == ConsentState::Withdrawn) {
-        m_clientIdStore->clearClientId();
+        clearVisitorIdentity();
     }
 
     emit consentStateChanged(state);
@@ -131,7 +131,7 @@ void Tracker::setConsentStore(ConsentStore *store) {
 
     const auto newState = m_consentStore->consentState();
     if (newState == ConsentState::Denied || newState == ConsentState::Withdrawn) {
-        m_clientIdStore->clearClientId();
+        clearVisitorIdentity();
     }
     if (oldState != newState) {
         emit consentStateChanged(newState);
@@ -144,7 +144,7 @@ void Tracker::setClientIdStore(ClientIdStore *store) {
 
     if (m_consentStore->consentState() == ConsentState::Denied
         || m_consentStore->consentState() == ConsentState::Withdrawn) {
-        m_clientIdStore->clearClientId();
+        clearVisitorIdentity();
     }
 }
 
@@ -156,8 +156,8 @@ void Tracker::setClientId(const QString &clientId) const {
     m_clientIdStore->setClientId(clientId);
 }
 
-void Tracker::resetClientId() const {
-    m_clientIdStore->clearClientId();
+void Tracker::resetClientId() {
+    clearVisitorIdentity();
 }
 
 void Tracker::setCustomDimension(const int id, const QString &value) {
@@ -312,6 +312,11 @@ RequestResult Tracker::validateTrackingCall() const {
     }
 
     return result(RequestResult::Status::Accepted);
+}
+
+void Tracker::clearVisitorIdentity() {
+    m_clientIdStore->clearClientId();
+    m_currentPageViewId.clear();
 }
 
 void Tracker::ensureClientId() {

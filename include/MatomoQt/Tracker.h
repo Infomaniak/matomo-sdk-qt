@@ -90,7 +90,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         void setClientId(const QString &clientId) const;
 
         /** Resets the client ID, clearing the active store. */
-        void resetClientId() const;
+        void resetClientId();
 
         /** Builds and dispatches a page view tracking request. */
         [[nodiscard]] RequestResult trackPageView(const PageView &pageView);
@@ -149,6 +149,8 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
 
     private:
         [[nodiscard]] RequestResult validateTrackingCall() const;
+
+        void clearVisitorIdentity();
 
         RequestBuildOptions buildOptions() const;
         QList<CustomDimension> mergeDimensions(const QList<CustomDimension> &callDimensions) const;
