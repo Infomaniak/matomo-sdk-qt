@@ -157,6 +157,40 @@ if (requestResult.accepted()) {
 
 This builds the tracking URL only.
 
+## QML Example
+
+A runnable QML example lives in `examples/qml-basic`. It shows a minimal
+`MatomoTracker` element wired to consent buttons and tracking calls; no
+tracking is sent before the user explicitly grants consent.
+
+```sh
+cmake -S . -B build -DMATOMOQT_BUILD_QML=ON -DMATOMOQT_BUILD_EXAMPLES=ON
+cmake --build build
+./build/examples/qml-basic/matomoqt-example-qml-basic
+```
+
+By default the example points at `http://127.0.0.1:8080/matomo.php`; edit
+`examples/qml-basic/qml/Main.qml` to point it at your own Matomo instance
+(e.g. the local Matomo `docker-compose.yml` at the root of this repository,
+or a real server) to see tracked hits.
+
+```qml
+import MatomoQt
+
+MatomoTracker {
+    id: matomo
+    endpoint: "https://matomo.example.com/matomo.php"
+    actionUrlBase: "app://my-app/"
+    siteId: 1
+    privacyMode: Matomo.RequiresConsent
+}
+
+// Only after explicit user consent:
+matomo.grantConsent()
+matomo.trackPageView("/settings", "Settings")
+matomo.trackEvent("preferences", "click", "saveButton", 1)
+```
+
 ## Privacy Model
 
 The SDK is intended to provide GDPR and Swiss FADP/nLPD-oriented,
