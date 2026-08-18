@@ -231,6 +231,7 @@ RequestResult Tracker::trackPageView(const PageView &pageView) {
     }
 
     m_currentPageViewId = generatePageViewId();
+    m_lastPageViewPath = enriched.path;
 
     QUrl url = buildResult.request.url;
     addTrackerParameters(url);
@@ -282,7 +283,8 @@ RequestResult Tracker::sendPing() {
 
     ensureClientId();
 
-    const auto buildResult = m_requestBuilder.buildPing(QStringLiteral("ping"), buildOptions());
+    const QString pingPath = m_lastPageViewPath.isEmpty() ? QStringLiteral("/") : m_lastPageViewPath;
+    const auto buildResult = m_requestBuilder.buildPing(pingPath, buildOptions());
     if (!buildResult.accepted()) {
         recordBlocked();
         return buildResult.result;
@@ -317,6 +319,7 @@ RequestResult Tracker::validateTrackingCall() const {
 void Tracker::clearVisitorIdentity() {
     m_clientIdStore->clearClientId();
     m_currentPageViewId.clear();
+    m_lastPageViewPath.clear();
 }
 
 void Tracker::ensureClientId() {

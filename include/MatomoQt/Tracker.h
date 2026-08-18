@@ -171,6 +171,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         RequestBuilder m_requestBuilder;
         QMap<int, QString> m_customDimensions;
         QString m_currentPageViewId;
+        QString m_lastPageViewPath;
         bool m_forceNewVisit = false;
         TrackerStats m_stats;
         QString m_userAgent;

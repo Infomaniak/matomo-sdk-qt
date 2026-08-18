@@ -153,6 +153,8 @@ class TrackerIntegrationTest : public QObject {
         void trackPageViewDispatchesToServer();
         void trackEventDispatchesToServer();
         void sendPingDispatchesToServer();
+        void pingCarriesLastPageViewPath();
+        void pingWithoutPageViewFallsBackToBase();
         void blockedByPrivacyDoesNotReachDispatcher();
         void disabledTrackerDoesNotDispatch();
         void pageViewIdIsPresentOnPageView();
@@ -242,6 +244,49 @@ void TrackerIntegrationTest::sendPingDispatchesToServer() {
 
     const auto query = queryFor(server.lastRequestPath());
     QVERIFY(hasQueryItem(query, QStringLiteral("ping")));
+}
+
+void TrackerIntegrationTest::pingCarriesLastPageViewPath() {
+    TestHttpServer server;
+    QVERIFY(server.start());
+
+    Tracker tracker(validConfig(server.url()));
+    tracker.setConsentState(ConsentState::Granted);
+
+    QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
+    (void) tracker.trackPageView({.path = QStringLiteral("settings")});
+    QVERIFY(dispatchSpy.wait(5000));
+
+    const auto pvQuery = queryFor(server.lastRequestPath());
+    const QString pvUrl = queryValue(pvQuery, QStringLiteral("url"));
+    QVERIFY(pvUrl.endsWith(QStringLiteral("/settings")));
+
+    dispatchSpy.clear();
+    (void) tracker.sendPing();
+    QVERIFY(dispatchSpy.wait(5000));
+
+    const auto pingQuery = queryFor(server.lastRequestPath());
+    QVERIFY(hasQueryItem(pingQuery, QStringLiteral("ping")));
+    const QString pingUrl = queryValue(pingQuery, QStringLiteral("url"));
+    QCOMPARE(pingUrl, pvUrl);
+}
+
+void TrackerIntegrationTest::pingWithoutPageViewFallsBackToBase() {
+    TestHttpServer server;
+    QVERIFY(server.start());
+
+    Tracker tracker(validConfig(server.url()));
+    tracker.setConsentState(ConsentState::Granted);
+
+    QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
+    const auto res = tracker.sendPing();
+    QVERIFY(res.accepted());
+    QVERIFY(dispatchSpy.wait(5000));
+
+    const auto query = queryFor(server.lastRequestPath());
+    QVERIFY(hasQueryItem(query, QStringLiteral("ping")));
+    const QString url = queryValue(query, QStringLiteral("url"));
+    QCOMPARE(url, QStringLiteral("app://desktop/"));
 }
 
 void TrackerIntegrationTest::blockedByPrivacyDoesNotReachDispatcher() {
