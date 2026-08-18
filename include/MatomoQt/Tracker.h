@@ -101,10 +101,10 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         /** Builds and dispatches a ping tracking request. */
         [[nodiscard]] RequestResult sendPing();
 
-        /** Sets a tracker-level custom dimension merged into every outgoing request.
+        /** Sets a tracker-level custom dimension merged into page-view and event
+         *  tracking requests (per-call dimensions take precedence on duplicate IDs).
          *
-         * Per-call dimensions in PageView or Event take precedence over
-         * tracker-level dimensions with the same ID.
+         *  Tracker-level dimensions are not sent with sendPing()
          */
         void setCustomDimension(int id, const QString &value);
 
