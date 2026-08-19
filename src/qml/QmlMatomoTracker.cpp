@@ -34,7 +34,8 @@ MatomoTracker *MatomoTracker::create(QQmlEngine *engine, QJSEngine *) {
 
 MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
-    m_tracker(this) {
+    m_tracker(this),
+    m_lastConfig(m_tracker.config()) {
 
     connect(&m_tracker, &Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
     connect(&m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
@@ -179,10 +180,12 @@ void MatomoTracker::resetClientId() {
 }
 
 void MatomoTracker::onTrackerConfigChanged() {
-    emit endpointChanged();
-    emit actionUrlBaseChanged();
-    emit siteIdChanged();
-    emit privacyModeChanged();
+    const auto config = m_tracker.config();
+    if (m_lastConfig.endpoint != config.endpoint) emit endpointChanged();
+    if (m_lastConfig.actionUrlBase != config.actionUrlBase) emit actionUrlBaseChanged();
+    if (m_lastConfig.siteId != config.siteId) emit siteIdChanged();
+    if (m_lastConfig.privacyMode != config.privacyMode) emit privacyModeChanged();
+    m_lastConfig = config;
 }
 
 void MatomoTracker::applyRequestResult(const RequestResult &result) {
