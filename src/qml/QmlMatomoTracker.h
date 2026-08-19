@@ -113,8 +113,7 @@ class MatomoTracker : public QObject {
         void applyRequestResult(const RequestResult &result);
 
         Tracker m_tracker;
-        RequestStatus::Value m_lastRequestStatus = RequestStatus::Value::RequestInvalidConfig;
-        QString m_lastRequestMessage;
+        RequestResult m_lastRequestResult;
 };
 
 } // namespace MatomoQt::Qml
