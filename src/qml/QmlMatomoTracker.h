@@ -71,16 +71,16 @@ class MatomoTracker : public QObject {
         [[nodiscard]] int siteId() const;
         void setSiteId(int siteId);
 
-        [[nodiscard]] MatomoQt::PrivacyMode::Value privacyMode() const;
-        void setPrivacyMode(MatomoQt::PrivacyMode::Value mode);
+        [[nodiscard]] PrivacyMode::Value privacyMode() const;
+        void setPrivacyMode(PrivacyMode::Value mode);
 
         [[nodiscard]] bool isEnabled() const;
         void setEnabled(bool enabled);
 
-        [[nodiscard]] MatomoQt::ConsentState::Value consentState() const;
-        void setConsentState(MatomoQt::ConsentState::Value state);
+        [[nodiscard]] ConsentState::Value consentState() const;
+        void setConsentState(ConsentState::Value state);
 
-        [[nodiscard]] MatomoQt::RequestStatus::Value lastRequestStatus() const;
+        [[nodiscard]] RequestStatus::Value lastRequestStatus() const;
         [[nodiscard]] QString lastRequestMessage() const;
 
         Q_INVOKABLE bool trackPageView(const QString &path, const QString &actionName = {});
@@ -106,10 +106,10 @@ class MatomoTracker : public QObject {
 
     private:
         void onTrackerConfigChanged();
-        void applyRequestResult(const MatomoQt::RequestResult &result);
+        void applyRequestResult(const RequestResult &result);
 
-        MatomoQt::Tracker m_tracker;
-        MatomoQt::RequestStatus::Value m_lastRequestStatus = MatomoQt::RequestStatus::Value::RequestInvalidConfig;
+        Tracker m_tracker;
+        RequestStatus::Value m_lastRequestStatus = RequestStatus::Value::RequestInvalidConfig;
         QString m_lastRequestMessage;
 };
 

@@ -30,9 +30,9 @@ MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
     m_tracker(this) {
 
-    connect(&m_tracker, &MatomoQt::Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
-    connect(&m_tracker, &MatomoQt::Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
-    connect(&m_tracker, &MatomoQt::Tracker::consentStateChanged, this, [this](MatomoQt::ConsentState::Value) {
+    connect(&m_tracker, &Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
+    connect(&m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
+    connect(&m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState::Value) {
         emit consentStateChanged();
     });
 }
@@ -76,11 +76,11 @@ void MatomoTracker::setSiteId(const int siteId) {
     m_tracker.setConfig(config);
 }
 
-MatomoQt::PrivacyMode::Value MatomoTracker::privacyMode() const {
+PrivacyMode::Value MatomoTracker::privacyMode() const {
     return m_tracker.config().privacyMode;
 }
 
-void MatomoTracker::setPrivacyMode(const MatomoQt::PrivacyMode::Value mode) {
+void MatomoTracker::setPrivacyMode(const PrivacyMode::Value mode) {
     auto config = m_tracker.config();
     if (config.privacyMode == mode) {
         return;
@@ -97,15 +97,15 @@ void MatomoTracker::setEnabled(const bool enabled) {
     m_tracker.setEnabled(enabled);
 }
 
-MatomoQt::ConsentState::Value MatomoTracker::consentState() const {
+ConsentState::Value MatomoTracker::consentState() const {
     return m_tracker.consentState();
 }
 
-void MatomoTracker::setConsentState(const MatomoQt::ConsentState::Value state) {
+void MatomoTracker::setConsentState(const ConsentState::Value state) {
     m_tracker.setConsentState(state);
 }
 
-MatomoQt::RequestStatus::Value MatomoTracker::lastRequestStatus() const {
+RequestStatus::Value MatomoTracker::lastRequestStatus() const {
     return m_lastRequestStatus;
 }
 
@@ -132,7 +132,7 @@ bool MatomoTracker::trackEvent(const QString &category,
         const auto parsed = value.toDouble(&ok);
         if (!ok) {
             applyRequestResult({
-                .status = MatomoQt::RequestStatus::Value::RequestInvalidPayload,
+                .status = RequestStatus::Value::RequestInvalidPayload,
                 .message = QStringLiteral("trackEvent value must be numeric or omitted."),
             });
             return false;
@@ -157,15 +157,15 @@ bool MatomoTracker::sendPing() {
 }
 
 void MatomoTracker::grantConsent() {
-    setConsentState(MatomoQt::ConsentState::Value::Granted);
+    setConsentState(ConsentState::Value::Granted);
 }
 
 void MatomoTracker::denyConsent() {
-    setConsentState(MatomoQt::ConsentState::Value::Denied);
+    setConsentState(ConsentState::Value::Denied);
 }
 
 void MatomoTracker::withdrawConsent() {
-    setConsentState(MatomoQt::ConsentState::Value::Withdrawn);
+    setConsentState(ConsentState::Value::Withdrawn);
 }
 
 void MatomoTracker::resetClientId() {
@@ -179,7 +179,7 @@ void MatomoTracker::onTrackerConfigChanged() {
     emit privacyModeChanged();
 }
 
-void MatomoTracker::applyRequestResult(const MatomoQt::RequestResult &result) {
+void MatomoTracker::applyRequestResult(const RequestResult &result) {
     if (m_lastRequestStatus != result.status) {
         m_lastRequestStatus = result.status;
         emit lastRequestStatusChanged();
