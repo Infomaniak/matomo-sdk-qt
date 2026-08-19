@@ -17,30 +17,36 @@
 
 #pragma once
 
-#include <QtCore/QString>
+#include <MatomoQt/Export.h>
 
-namespace MatomoQt {
+#include <QtCore/QString>
+#include <QtCore/qtmetamacros.h>
+
+namespace MatomoQt::ConsentState {
+
+Q_NAMESPACE_EXPORT(MATOMOQT_CORE_EXPORT)
 
 /** User consent state known by the tracker. */
-enum class ConsentState {
+enum class Value {
     Unknown,
     Granted,
     Denied,
     Withdrawn,
 };
+Q_ENUM_NS(Value)
 
-[[nodiscard]] inline QString enumToString(ConsentState state) {
+[[nodiscard]] inline QString enumToString(Value state) {
     switch (state) {
-        case ConsentState::Unknown:
+        case Value::Unknown:
             return QStringLiteral("Unknown");
-        case ConsentState::Granted:
+        case Value::Granted:
             return QStringLiteral("Granted");
-        case ConsentState::Denied:
+        case Value::Denied:
             return QStringLiteral("Denied");
-        case ConsentState::Withdrawn:
+        case Value::Withdrawn:
             return QStringLiteral("Withdrawn");
     }
     return QStringLiteral("Unknown");
 }
 
-} // namespace MatomoQt
+} // namespace MatomoQt::ConsentState

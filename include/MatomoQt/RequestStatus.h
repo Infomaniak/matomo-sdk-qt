@@ -17,33 +17,39 @@
 
 #pragma once
 
+#include <MatomoQt/Export.h>
+
 #include <QtCore/QString>
+#include <QtCore/qtmetamacros.h>
 
-namespace MatomoQt {
+namespace MatomoQt::RequestStatus {
 
-/** Public-facing status of a tracking request, suitable for QML and C++ consumers. */
-enum class RequestStatus {
+Q_NAMESPACE_EXPORT(MATOMOQT_CORE_EXPORT)
+
+/** Public-facing status of a tracking request. */
+enum class Value {
     Accepted,
     RequestDisabled,
     RequestBlockedByPrivacy,
     RequestInvalidConfig,
     RequestInvalidPayload,
 };
+Q_ENUM_NS(Value)
 
-[[nodiscard]] inline QString enumToString(const RequestStatus status) {
+[[nodiscard]] inline QString enumToString(Value status) {
     switch (status) {
-        case RequestStatus::Accepted:
+        case Value::Accepted:
             return QStringLiteral("Accepted");
-        case RequestStatus::RequestDisabled:
+        case Value::RequestDisabled:
             return QStringLiteral("RequestDisabled");
-        case RequestStatus::RequestBlockedByPrivacy:
+        case Value::RequestBlockedByPrivacy:
             return QStringLiteral("RequestBlockedByPrivacy");
-        case RequestStatus::RequestInvalidConfig:
+        case Value::RequestInvalidConfig:
             return QStringLiteral("RequestInvalidConfig");
-        case RequestStatus::RequestInvalidPayload:
+        case Value::RequestInvalidPayload:
             return QStringLiteral("RequestInvalidPayload");
     }
     return QStringLiteral("RequestInvalidConfig");
 }
 
-} // namespace MatomoQt
+} // namespace MatomoQt::RequestStatus

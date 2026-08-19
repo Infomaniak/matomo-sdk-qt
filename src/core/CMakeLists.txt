@@ -24,7 +24,6 @@ target_sources(MatomoQtCore
         UserAgentBuilder.cpp
         UserAgentBuilder_p.h
         Version.cpp
-        QtMeta.cpp
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ClientIdStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentState.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
@@ -52,7 +51,6 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackingRequest.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/UserAgentBuilder.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"
-        "${PROJECT_SOURCE_DIR}/include/MatomoQt/QtMeta.h"
 )
 
 target_compile_features(MatomoQtCore PUBLIC cxx_std_20)

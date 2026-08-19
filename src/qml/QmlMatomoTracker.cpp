@@ -30,9 +30,9 @@ MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
     m_tracker(this) {
 
-    connect(&m_tracker, &Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
-    connect(&m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
-    connect(&m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState) {
+    connect(&m_tracker, &MatomoQt::Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
+    connect(&m_tracker, &MatomoQt::Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
+    connect(&m_tracker, &MatomoQt::Tracker::consentStateChanged, this, [this](MatomoQt::ConsentState::Value) {
         emit consentStateChanged();
     });
 }
@@ -76,11 +76,11 @@ void MatomoTracker::setSiteId(const int siteId) {
     m_tracker.setConfig(config);
 }
 
-PrivacyMode MatomoTracker::privacyMode() const {
+MatomoQt::PrivacyMode::Value MatomoTracker::privacyMode() const {
     return m_tracker.config().privacyMode;
 }
 
-void MatomoTracker::setPrivacyMode(const PrivacyMode mode) {
+void MatomoTracker::setPrivacyMode(const MatomoQt::PrivacyMode::Value mode) {
     auto config = m_tracker.config();
     if (config.privacyMode == mode) {
         return;
@@ -97,15 +97,15 @@ void MatomoTracker::setEnabled(const bool enabled) {
     m_tracker.setEnabled(enabled);
 }
 
-ConsentState MatomoTracker::consentState() const {
+MatomoQt::ConsentState::Value MatomoTracker::consentState() const {
     return m_tracker.consentState();
 }
 
-void MatomoTracker::setConsentState(const ConsentState state) {
+void MatomoTracker::setConsentState(const MatomoQt::ConsentState::Value state) {
     m_tracker.setConsentState(state);
 }
 
-RequestStatus MatomoTracker::lastRequestStatus() const {
+MatomoQt::RequestStatus::Value MatomoTracker::lastRequestStatus() const {
     return m_lastRequestStatus;
 }
 
@@ -132,7 +132,7 @@ bool MatomoTracker::trackEvent(const QString &category,
         const auto parsed = value.toDouble(&ok);
         if (!ok) {
             applyRequestResult({
-                .status = RequestResult::Status::InvalidPayload,
+                .status = MatomoQt::RequestStatus::Value::RequestInvalidPayload,
                 .message = QStringLiteral("trackEvent value must be numeric or omitted."),
             });
             return false;
@@ -157,35 +157,19 @@ bool MatomoTracker::sendPing() {
 }
 
 void MatomoTracker::grantConsent() {
-    setConsentState(ConsentState::Granted);
+    setConsentState(MatomoQt::ConsentState::Value::Granted);
 }
 
 void MatomoTracker::denyConsent() {
-    setConsentState(ConsentState::Denied);
+    setConsentState(MatomoQt::ConsentState::Value::Denied);
 }
 
 void MatomoTracker::withdrawConsent() {
-    setConsentState(ConsentState::Withdrawn);
+    setConsentState(MatomoQt::ConsentState::Value::Withdrawn);
 }
 
 void MatomoTracker::resetClientId() {
     m_tracker.resetClientId();
-}
-
-RequestStatus MatomoTracker::toRequestStatus(const RequestResult::Status status) {
-    switch (status) {
-        case RequestResult::Status::Accepted:
-            return RequestStatus::Accepted;
-        case RequestResult::Status::Disabled:
-            return RequestStatus::RequestDisabled;
-        case RequestResult::Status::BlockedByPrivacy:
-            return RequestStatus::RequestBlockedByPrivacy;
-        case RequestResult::Status::InvalidConfig:
-            return RequestStatus::RequestInvalidConfig;
-        case RequestResult::Status::InvalidPayload:
-            return RequestStatus::RequestInvalidPayload;
-    }
-    return RequestStatus::RequestInvalidConfig;
 }
 
 void MatomoTracker::onTrackerConfigChanged() {
@@ -195,9 +179,9 @@ void MatomoTracker::onTrackerConfigChanged() {
     emit privacyModeChanged();
 }
 
-void MatomoTracker::applyRequestResult(const RequestResult &result) {
-    if (const auto status = toRequestStatus(result.status); m_lastRequestStatus != status) {
-        m_lastRequestStatus = status;
+void MatomoTracker::applyRequestResult(const MatomoQt::RequestResult &result) {
+    if (m_lastRequestStatus != result.status) {
+        m_lastRequestStatus = result.status;
         emit lastRequestStatusChanged();
     }
     if (m_lastRequestMessage != result.message) {

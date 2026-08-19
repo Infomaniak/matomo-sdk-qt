@@ -66,10 +66,10 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         void setConfig(const TrackerConfig &config);
 
         /** Returns the current consent state, read from the active store. */
-        [[nodiscard]] ConsentState consentState() const;
+        [[nodiscard]] ConsentState::Value consentState() const;
 
         /** Updates the consent state, written to the active store. */
-        void setConsentState(ConsentState state);
+        void setConsentState(ConsentState::Value state);
 
         /** Returns whether tracking is enabled locally. */
         [[nodiscard]] bool isEnabled() const;
@@ -146,7 +146,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
 
     signals:
         void configChanged();
-        void consentStateChanged(ConsentState state);
+        void consentStateChanged(ConsentState::Value state);
         void enabledChanged(bool enabled);
         void dispatchFinished(const DispatchResult &result);
         void statsChanged();

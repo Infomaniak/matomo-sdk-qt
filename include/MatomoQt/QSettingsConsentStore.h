@@ -35,8 +35,8 @@ class MATOMOQT_CORE_EXPORT QSettingsConsentStore : public ConsentStore {
         explicit QSettingsConsentStore(QSettings *settings);
         ~QSettingsConsentStore() override = default;
 
-        [[nodiscard]] ConsentState consentState() const override;
-        void setConsentState(ConsentState state) override;
+        [[nodiscard]] ConsentState::Value consentState() const override;
+        void setConsentState(ConsentState::Value state) override;
 
     private:
         QSettings *m_settings = nullptr;
