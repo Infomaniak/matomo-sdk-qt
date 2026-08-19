@@ -131,11 +131,13 @@ void QmlModuleIntegrationTest::qmlModuleImportsAndRespectsConsentGate() {
 import QtQml
 import MatomoQt 1.0
 
-MatomoTracker {
-    endpoint: "%1"
-    actionUrlBase: "app://qml-module-test/"
-    siteId: 1
-    privacyMode: PrivacyMode.RequiresConsent
+QtObject {
+    Component.onCompleted: {
+        MatomoTracker.endpoint = "%1"
+        MatomoTracker.actionUrlBase = "app://qml-module-test/"
+        MatomoTracker.siteId = 1
+        MatomoTracker.privacyMode = PrivacyMode.RequiresConsent
+    }
 }
 )").arg(server.url().toString());
 
@@ -144,11 +146,14 @@ MatomoTracker {
     QTRY_VERIFY2(component.isReady() || component.isError(), qPrintable(component.errorString()));
     QVERIFY2(component.isReady(), qPrintable(component.errorString()));
 
-    std::unique_ptr<QObject> tracker(component.create());
-    QVERIFY2(tracker != nullptr, qPrintable(component.errorString()));
+    std::unique_ptr<QObject> root(component.create());
+    QVERIFY2(root != nullptr, qPrintable(component.errorString()));
+
+    QObject *tracker = engine.singletonInstance<QObject *>("MatomoQt", "MatomoTracker");
+    QVERIFY(tracker != nullptr);
 
     bool acceptedBeforeConsent = false;
-    QVERIFY(QMetaObject::invokeMethod(tracker.get(),
+    QVERIFY(QMetaObject::invokeMethod(tracker,
                                       "trackPageView",
                                       Q_RETURN_ARG(bool, acceptedBeforeConsent),
                                       Q_ARG(QString, QStringLiteral("settings")),
@@ -156,10 +161,10 @@ MatomoTracker {
     QVERIFY(!acceptedBeforeConsent);
     QCOMPARE(server.requestCount(), 0);
 
-    QVERIFY(QMetaObject::invokeMethod(tracker.get(), "grantConsent"));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "grantConsent"));
 
     bool acceptedAfterConsent = false;
-    QVERIFY(QMetaObject::invokeMethod(tracker.get(),
+    QVERIFY(QMetaObject::invokeMethod(tracker,
                                       "trackEvent",
                                       Q_RETURN_ARG(bool, acceptedAfterConsent),
                                       Q_ARG(QString, QStringLiteral("preferences")),

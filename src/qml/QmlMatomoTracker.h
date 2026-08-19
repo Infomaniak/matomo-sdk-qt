@@ -25,6 +25,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QUrl>
 #include <QtCore/QVariant>
+#include <QtQml/QQmlEngine>
 #include <QtQmlIntegration/qqmlintegration.h>
 
 namespace MatomoQt::Qml {
@@ -50,17 +51,20 @@ QML_NAMED_ELEMENT(RequestStatus)
 class MatomoTracker : public QObject {
         Q_OBJECT
         QML_NAMED_ELEMENT(MatomoTracker)
+        QML_SINGLETON
         Q_PROPERTY(QUrl endpoint READ endpoint WRITE setEndpoint NOTIFY endpointChanged)
         Q_PROPERTY(QUrl actionUrlBase READ actionUrlBase WRITE setActionUrlBase NOTIFY actionUrlBaseChanged)
         Q_PROPERTY(int siteId READ siteId WRITE setSiteId NOTIFY siteIdChanged)
-        Q_PROPERTY(MatomoQt::PrivacyMode::Value privacyMode READ privacyMode WRITE setPrivacyMode NOTIFY privacyModeChanged)
+        Q_PROPERTY(PrivacyMode::Value privacyMode READ privacyMode WRITE setPrivacyMode NOTIFY privacyModeChanged)
         Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled NOTIFY enabledChanged)
-        Q_PROPERTY(MatomoQt::ConsentState::Value consentState READ consentState WRITE setConsentState NOTIFY consentStateChanged)
-        Q_PROPERTY(MatomoQt::RequestStatus::Value lastRequestStatus READ lastRequestStatus NOTIFY lastRequestStatusChanged)
+        Q_PROPERTY(ConsentState::Value consentState READ consentState WRITE setConsentState NOTIFY consentStateChanged)
+        Q_PROPERTY(RequestStatus::Value lastRequestStatus READ lastRequestStatus NOTIFY lastRequestStatusChanged)
         Q_PROPERTY(QString lastRequestMessage READ lastRequestMessage NOTIFY lastRequestMessageChanged)
 
     public:
         explicit MatomoTracker(QObject *parent = nullptr);
+
+        static MatomoTracker *create(QQmlEngine *, QJSEngine *);
 
         [[nodiscard]] QUrl endpoint() const;
         void setEndpoint(const QUrl &endpoint);
