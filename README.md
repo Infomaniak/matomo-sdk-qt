@@ -171,7 +171,7 @@ cmake --build build
 
 By default the example points at `http://127.0.0.1:8080/matomo.php`; edit
 `examples/qml-basic/qml/Main.qml` to point it at your own Matomo instance
-(e.g. the local Matomo `docker-compose.yml` at the root of this repository,
+(e.g. a local Matomo `docker-compose.yml` for testing,
 or a real server) to see tracked hits.
 
 ```qml
