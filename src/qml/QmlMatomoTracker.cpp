@@ -28,7 +28,7 @@ namespace MatomoQt::Qml {
 
 MatomoTracker *MatomoTracker::create(QQmlEngine *engine, QJSEngine *) {
     auto *tracker = new MatomoTracker(engine);
-    engine->setObjectOwnership(tracker, QQmlEngine::CppOwnership);
+    QQmlEngine::setObjectOwnership(tracker, QQmlEngine::CppOwnership);
     return tracker;
 }
 
@@ -112,11 +112,11 @@ void MatomoTracker::setConsentState(const ConsentState::Value state) {
 }
 
 RequestStatus::Value MatomoTracker::lastRequestStatus() const {
-    return m_lastRequestStatus;
+    return m_lastRequestResult.status;
 }
 
 QString MatomoTracker::lastRequestMessage() const {
-    return m_lastRequestMessage;
+    return m_lastRequestResult.message;
 }
 
 bool MatomoTracker::trackPageView(const QString &path, const QString &actionName) {
@@ -186,14 +186,9 @@ void MatomoTracker::onTrackerConfigChanged() {
 }
 
 void MatomoTracker::applyRequestResult(const RequestResult &result) {
-    if (m_lastRequestStatus != result.status) {
-        m_lastRequestStatus = result.status;
-        emit lastRequestStatusChanged();
-    }
-    if (m_lastRequestMessage != result.message) {
-        m_lastRequestMessage = result.message;
-        emit lastRequestMessageChanged();
-    }
+    m_lastRequestResult = result;
+    emit lastRequestStatusChanged();
+    emit lastRequestMessageChanged();
 }
 
 } // namespace MatomoQt::Qml
