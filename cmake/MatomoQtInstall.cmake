@@ -27,6 +27,7 @@ install(
 if(TARGET MatomoQtQml)
     install(
         TARGETS MatomoQtQml
+        EXPORT MatomoQtTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}/qml/MatomoQt"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/qml/MatomoQt"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}/qml/MatomoQt"
