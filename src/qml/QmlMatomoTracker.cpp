@@ -26,6 +26,12 @@
 
 namespace MatomoQt::Qml {
 
+MatomoTracker *MatomoTracker::create(QQmlEngine *engine, QJSEngine *) {
+    auto *tracker = new MatomoTracker(engine);
+    engine->setObjectOwnership(tracker, QQmlEngine::CppOwnership);
+    return tracker;
+}
+
 MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
     m_tracker(this) {
