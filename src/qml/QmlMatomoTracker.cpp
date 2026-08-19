@@ -30,9 +30,9 @@ MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
     m_tracker(this) {
 
-    connect(&m_tracker, &MatomoQt::Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
-    connect(&m_tracker, &MatomoQt::Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
-    connect(&m_tracker, &MatomoQt::Tracker::consentStateChanged, this, [this](MatomoQt::ConsentState) {
+    connect(&m_tracker, &Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
+    connect(&m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
+    connect(&m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState) {
         emit consentStateChanged();
     });
 }
@@ -76,17 +76,16 @@ void MatomoTracker::setSiteId(const int siteId) {
     m_tracker.setConfig(config);
 }
 
-Matomo::PrivacyMode MatomoTracker::privacyMode() const {
-    return toQmlPrivacyMode(m_tracker.config().privacyMode);
+PrivacyMode MatomoTracker::privacyMode() const {
+    return m_tracker.config().privacyMode;
 }
 
-void MatomoTracker::setPrivacyMode(const Matomo::PrivacyMode mode) {
+void MatomoTracker::setPrivacyMode(const PrivacyMode mode) {
     auto config = m_tracker.config();
-    const auto converted = toCorePrivacyMode(mode);
-    if (config.privacyMode == converted) {
+    if (config.privacyMode == mode) {
         return;
     }
-    config.privacyMode = converted;
+    config.privacyMode = mode;
     m_tracker.setConfig(config);
 }
 
@@ -98,15 +97,15 @@ void MatomoTracker::setEnabled(const bool enabled) {
     m_tracker.setEnabled(enabled);
 }
 
-Matomo::ConsentState MatomoTracker::consentState() const {
-    return toQmlConsentState(m_tracker.consentState());
+ConsentState MatomoTracker::consentState() const {
+    return m_tracker.consentState();
 }
 
-void MatomoTracker::setConsentState(const Matomo::ConsentState state) {
-    m_tracker.setConsentState(toCoreConsentState(state));
+void MatomoTracker::setConsentState(const ConsentState state) {
+    m_tracker.setConsentState(state);
 }
 
-Matomo::RequestStatus MatomoTracker::lastRequestStatus() const {
+RequestStatus MatomoTracker::lastRequestStatus() const {
     return m_lastRequestStatus;
 }
 
@@ -133,7 +132,7 @@ bool MatomoTracker::trackEvent(const QString &category,
         const auto parsed = value.toDouble(&ok);
         if (!ok) {
             applyRequestResult({
-                .status = MatomoQt::RequestResult::Status::InvalidPayload,
+                .status = RequestResult::Status::InvalidPayload,
                 .message = QStringLiteral("trackEvent value must be numeric or omitted."),
             });
             return false;
@@ -158,87 +157,35 @@ bool MatomoTracker::sendPing() {
 }
 
 void MatomoTracker::grantConsent() {
-    setConsentState(Matomo::ConsentState::Granted);
+    setConsentState(ConsentState::Granted);
 }
 
 void MatomoTracker::denyConsent() {
-    setConsentState(Matomo::ConsentState::Denied);
+    setConsentState(ConsentState::Denied);
 }
 
 void MatomoTracker::withdrawConsent() {
-    setConsentState(Matomo::ConsentState::Withdrawn);
+    setConsentState(ConsentState::Withdrawn);
 }
 
 void MatomoTracker::resetClientId() {
     m_tracker.resetClientId();
 }
 
-Matomo::PrivacyMode MatomoTracker::toQmlPrivacyMode(const MatomoQt::PrivacyMode mode) {
-    switch (mode) {
-        case MatomoQt::PrivacyMode::Disabled:
-            return Matomo::PrivacyMode::Disabled;
-        case MatomoQt::PrivacyMode::RequiresConsent:
-            return Matomo::PrivacyMode::RequiresConsent;
-        case MatomoQt::PrivacyMode::ConsentExemptWithOptOut:
-            return Matomo::PrivacyMode::ConsentExemptWithOptOut;
-    }
-    return Matomo::PrivacyMode::Disabled;
-}
-
-MatomoQt::PrivacyMode MatomoTracker::toCorePrivacyMode(const Matomo::PrivacyMode mode) {
-    switch (mode) {
-        case Matomo::PrivacyMode::Disabled:
-            return MatomoQt::PrivacyMode::Disabled;
-        case Matomo::PrivacyMode::RequiresConsent:
-            return MatomoQt::PrivacyMode::RequiresConsent;
-        case Matomo::PrivacyMode::ConsentExemptWithOptOut:
-            return MatomoQt::PrivacyMode::ConsentExemptWithOptOut;
-    }
-    return MatomoQt::PrivacyMode::Disabled;
-}
-
-Matomo::ConsentState MatomoTracker::toQmlConsentState(const MatomoQt::ConsentState state) {
-    switch (state) {
-        case MatomoQt::ConsentState::Unknown:
-            return Matomo::ConsentState::Unknown;
-        case MatomoQt::ConsentState::Granted:
-            return Matomo::ConsentState::Granted;
-        case MatomoQt::ConsentState::Denied:
-            return Matomo::ConsentState::Denied;
-        case MatomoQt::ConsentState::Withdrawn:
-            return Matomo::ConsentState::Withdrawn;
-    }
-    return Matomo::ConsentState::Unknown;
-}
-
-MatomoQt::ConsentState MatomoTracker::toCoreConsentState(const Matomo::ConsentState state) {
-    switch (state) {
-        case Matomo::ConsentState::Unknown:
-            return MatomoQt::ConsentState::Unknown;
-        case Matomo::ConsentState::Granted:
-            return MatomoQt::ConsentState::Granted;
-        case Matomo::ConsentState::Denied:
-            return MatomoQt::ConsentState::Denied;
-        case Matomo::ConsentState::Withdrawn:
-            return MatomoQt::ConsentState::Withdrawn;
-    }
-    return MatomoQt::ConsentState::Unknown;
-}
-
-Matomo::RequestStatus MatomoTracker::toQmlRequestStatus(const MatomoQt::RequestResult::Status status) {
+RequestStatus MatomoTracker::toRequestStatus(const RequestResult::Status status) {
     switch (status) {
-        case MatomoQt::RequestResult::Status::Accepted:
-            return Matomo::RequestStatus::Accepted;
-        case MatomoQt::RequestResult::Status::Disabled:
-            return Matomo::RequestStatus::RequestDisabled;
-        case MatomoQt::RequestResult::Status::BlockedByPrivacy:
-            return Matomo::RequestStatus::RequestBlockedByPrivacy;
-        case MatomoQt::RequestResult::Status::InvalidConfig:
-            return Matomo::RequestStatus::RequestInvalidConfig;
-        case MatomoQt::RequestResult::Status::InvalidPayload:
-            return Matomo::RequestStatus::RequestInvalidPayload;
+        case RequestResult::Status::Accepted:
+            return RequestStatus::Accepted;
+        case RequestResult::Status::Disabled:
+            return RequestStatus::RequestDisabled;
+        case RequestResult::Status::BlockedByPrivacy:
+            return RequestStatus::RequestBlockedByPrivacy;
+        case RequestResult::Status::InvalidConfig:
+            return RequestStatus::RequestInvalidConfig;
+        case RequestResult::Status::InvalidPayload:
+            return RequestStatus::RequestInvalidPayload;
     }
-    return Matomo::RequestStatus::RequestInvalidConfig;
+    return RequestStatus::RequestInvalidConfig;
 }
 
 void MatomoTracker::onTrackerConfigChanged() {
@@ -248,9 +195,8 @@ void MatomoTracker::onTrackerConfigChanged() {
     emit privacyModeChanged();
 }
 
-void MatomoTracker::applyRequestResult(const MatomoQt::RequestResult &result) {
-    const auto status = toQmlRequestStatus(result.status);
-    if (m_lastRequestStatus != status) {
+void MatomoTracker::applyRequestResult(const RequestResult &result) {
+    if (const auto status = toRequestStatus(result.status); m_lastRequestStatus != status) {
         m_lastRequestStatus = status;
         emit lastRequestStatusChanged();
     }
