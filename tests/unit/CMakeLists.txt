@@ -90,6 +90,7 @@ set(matomoqt_public_headers
     RequestBuildOptions
     RequestBuildResult
     RequestResult
+    RequestStatus
     Tracker
     TrackerConfig
     TrackerStats

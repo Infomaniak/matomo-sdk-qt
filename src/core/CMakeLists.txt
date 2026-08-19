@@ -23,6 +23,7 @@ target_sources(MatomoQtCore
         TrackerConfig.cpp
         UserAgentBuilder.cpp
         Version.cpp
+        QtMeta.cpp
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ClientIdStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentState.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
@@ -43,12 +44,14 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildOptions.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestResult.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestStatus.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerStats.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackingRequest.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/UserAgentBuilder.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Version.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/QtMeta.h"
 )
 
 target_compile_features(MatomoQtCore PUBLIC cxx_std_20)
@@ -61,6 +64,8 @@ set_target_properties(MatomoQtCore PROPERTIES
     VERSION "${PROJECT_VERSION}"
     SOVERSION "${PROJECT_VERSION_MAJOR}"
 )
+
+qt6_extract_metatypes(MatomoQtCore)
 
 include(GenerateExportHeader)
 generate_export_header(MatomoQtCore
