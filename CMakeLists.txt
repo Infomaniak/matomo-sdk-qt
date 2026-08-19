@@ -38,4 +38,8 @@ if(MATOMOQT_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+if(MATOMOQT_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
 include(cmake/MatomoQtInstall.cmake)
