@@ -113,6 +113,7 @@ class MatomoTracker : public QObject {
         void applyRequestResult(const RequestResult &result);
 
         Tracker m_tracker;
+        TrackerConfig m_lastConfig;
         RequestResult m_lastRequestResult;
 };
 
