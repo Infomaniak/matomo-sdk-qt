@@ -135,7 +135,7 @@ MatomoTracker {
     endpoint: "%1"
     actionUrlBase: "app://qml-module-test/"
     siteId: 1
-    privacyMode: Matomo.RequiresConsent
+    privacyMode: PrivacyMode.RequiresConsent
 }
 )").arg(server.url().toString());
 

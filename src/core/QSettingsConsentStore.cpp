@@ -28,25 +28,25 @@ namespace {
 QSettingsConsentStore::QSettingsConsentStore(QSettings *settings) :
     m_settings(settings) {}
 
-ConsentState QSettingsConsentStore::consentState() const {
+ConsentState::Value QSettingsConsentStore::consentState() const {
     if (!m_settings) {
-        return ConsentState::Unknown;
+        return ConsentState::Value::Unknown;
     }
 
     if (const bool exists = m_settings->contains(kConsentStateKey); !exists) {
-        return ConsentState::Unknown;
+        return ConsentState::Value::Unknown;
     }
 
     bool ok = false;
     const int value = m_settings->value(kConsentStateKey).toInt(&ok);
     if (!ok || value < 0 || value > 3) {
-        return ConsentState::Unknown;
+        return ConsentState::Value::Unknown;
     }
 
-    return static_cast<ConsentState>(value);
+    return static_cast<ConsentState::Value>(value);
 }
 
-void QSettingsConsentStore::setConsentState(const ConsentState state) {
+void QSettingsConsentStore::setConsentState(const ConsentState::Value state) {
     if (!m_settings) {
         return;
     }

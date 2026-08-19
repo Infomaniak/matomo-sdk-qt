@@ -32,7 +32,7 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
         QUrl endpoint;
         QUrl actionUrlBase;
         SiteId siteId = 0;
-        PrivacyMode privacyMode = PrivacyMode::RequiresConsent;
+        PrivacyMode::Value privacyMode = PrivacyMode::Value::RequiresConsent;
 
         /** Returns true when the endpoint and site ID can identify a Matomo site. */
         [[nodiscard]] bool isValid() const;

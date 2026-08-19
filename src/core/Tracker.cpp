@@ -35,7 +35,7 @@ namespace MatomoQt {
 
 namespace {
 
-RequestResult result(RequestResult::Status status, QString message = {}) {
+RequestResult result(RequestStatus::Value status, QString message = {}) {
     return RequestResult{status, std::move(message)};
 }
 
@@ -93,18 +93,18 @@ void Tracker::setConfig(const TrackerConfig &config) {
     emit configChanged();
 }
 
-ConsentState Tracker::consentState() const {
+ConsentState::Value Tracker::consentState() const {
     return m_consentStore->consentState();
 }
 
-void Tracker::setConsentState(const ConsentState state) {
+void Tracker::setConsentState(const ConsentState::Value state) {
     if (m_consentStore->consentState() == state) {
         return;
     }
 
     m_consentStore->setConsentState(state);
 
-    if (state == ConsentState::Denied || state == ConsentState::Withdrawn) {
+    if (state == ConsentState::Value::Denied || state == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
 
@@ -130,7 +130,7 @@ void Tracker::setConsentStore(ConsentStore *store) {
     m_consentStore = store ? store : &m_defaultConsentStore;
 
     const auto newState = m_consentStore->consentState();
-    if (newState == ConsentState::Denied || newState == ConsentState::Withdrawn) {
+    if (newState == ConsentState::Value::Denied || newState == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
     if (oldState != newState) {
@@ -142,8 +142,8 @@ void Tracker::setClientIdStore(ClientIdStore *store) {
     m_defaultClientIdStore.setClientId(m_clientIdStore->clientId());
     m_clientIdStore = store ? store : &m_defaultClientIdStore;
 
-    if (m_consentStore->consentState() == ConsentState::Denied
-        || m_consentStore->consentState() == ConsentState::Withdrawn) {
+    if (m_consentStore->consentState() == ConsentState::Value::Denied
+        || m_consentStore->consentState() == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
 }
@@ -211,7 +211,7 @@ void Tracker::setNetworkDispatcherConfig(const NetworkDispatcherConfig &config) 
 RequestResult Tracker::trackPageView(const PageView &pageView) {
     if (!pageView.isValid()) {
         recordBlocked();
-        return result(RequestResult::Status::InvalidPayload, QStringLiteral("Page view path is required."));
+        return result(RequestStatus::Value::RequestInvalidPayload, QStringLiteral("Page view path is required."));
     }
 
     if (const auto validation = validateTrackingCall(); !validation.accepted()) {
@@ -240,13 +240,13 @@ RequestResult Tracker::trackPageView(const PageView &pageView) {
     m_dispatcher->dispatch(url);
     recordSent();
 
-    return result(RequestResult::Status::Accepted);
+    return result(RequestStatus::Value::Accepted);
 }
 
 RequestResult Tracker::trackEvent(const Event &event) {
     if (!event.isValid()) {
         recordBlocked();
-        return result(RequestResult::Status::InvalidPayload, QStringLiteral("Event category and action are required."));
+        return result(RequestStatus::Value::RequestInvalidPayload, QStringLiteral("Event category and action are required."));
     }
 
     if (const auto validation = validateTrackingCall(); !validation.accepted()) {
@@ -272,7 +272,7 @@ RequestResult Tracker::trackEvent(const Event &event) {
     m_dispatcher->dispatch(url);
     recordSent();
 
-    return result(RequestResult::Status::Accepted);
+    return result(RequestStatus::Value::Accepted);
 }
 
 RequestResult Tracker::sendPing() {
@@ -297,23 +297,23 @@ RequestResult Tracker::sendPing() {
     m_dispatcher->dispatch(url);
     recordSent();
 
-    return result(RequestResult::Status::Accepted);
+    return result(RequestStatus::Value::Accepted);
 }
 
 RequestResult Tracker::validateTrackingCall() const {
     if (!m_enabled) {
-        return result(RequestResult::Status::Disabled, QStringLiteral("Tracker is disabled."));
+        return result(RequestStatus::Value::RequestDisabled, QStringLiteral("Tracker is disabled."));
     }
 
     if (!m_config.isValid()) {
-        return result(RequestResult::Status::InvalidConfig, QStringLiteral("Tracker endpoint and site ID are required."));
+        return result(RequestStatus::Value::RequestInvalidConfig, QStringLiteral("Tracker endpoint and site ID are required."));
     }
 
     if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentStore->consentState())) {
-        return result(RequestResult::Status::BlockedByPrivacy, QStringLiteral("Tracking blocked by privacy settings."));
+        return result(RequestStatus::Value::RequestBlockedByPrivacy, QStringLiteral("Tracking blocked by privacy settings."));
     }
 
-    return result(RequestResult::Status::Accepted);
+    return result(RequestStatus::Value::Accepted);
 }
 
 void Tracker::clearVisitorIdentity() {

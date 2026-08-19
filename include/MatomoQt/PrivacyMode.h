@@ -17,27 +17,33 @@
 
 #pragma once
 
-#include <QtCore/QString>
+#include <MatomoQt/Export.h>
 
-namespace MatomoQt {
+#include <QtCore/QString>
+#include <QtCore/qtmetamacros.h>
+
+namespace MatomoQt::PrivacyMode {
+
+Q_NAMESPACE_EXPORT(MATOMOQT_CORE_EXPORT)
 
 /** Privacy gate applied before any tracking request may be built. */
-enum class PrivacyMode {
+enum class Value {
     Disabled,
     RequiresConsent,
     ConsentExemptWithOptOut,
 };
+Q_ENUM_NS(Value)
 
-[[nodiscard]] inline QString enumToString(PrivacyMode mode) {
+[[nodiscard]] inline QString enumToString(Value mode) {
     switch (mode) {
-        case PrivacyMode::Disabled:
+        case Value::Disabled:
             return QStringLiteral("Disabled");
-        case PrivacyMode::RequiresConsent:
+        case Value::RequiresConsent:
             return QStringLiteral("RequiresConsent");
-        case PrivacyMode::ConsentExemptWithOptOut:
+        case Value::ConsentExemptWithOptOut:
             return QStringLiteral("ConsentExemptWithOptOut");
     }
     return QStringLiteral("Disabled");
 }
 
-} // namespace MatomoQt
+} // namespace MatomoQt::PrivacyMode

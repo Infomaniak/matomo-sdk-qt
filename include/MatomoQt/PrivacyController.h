@@ -36,7 +36,7 @@ namespace MatomoQt {
  */
 struct MATOMOQT_CORE_EXPORT PrivacyController {
     /** Returns true only if the given mode and state allow tracking. */
-    [[nodiscard]] static bool isTrackingAllowed(PrivacyMode mode, ConsentState state);
+    [[nodiscard]] static bool isTrackingAllowed(PrivacyMode::Value mode, ConsentState::Value state);
 };
 
 } // namespace MatomoQt

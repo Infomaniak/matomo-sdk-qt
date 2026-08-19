@@ -19,7 +19,6 @@
 
 #include <MatomoQt/ConsentState.h>
 #include <MatomoQt/PrivacyMode.h>
-#include <MatomoQt/QtMeta.h>
 #include <MatomoQt/RequestStatus.h>
 #include <MatomoQt/Tracker.h>
 
@@ -30,11 +29,23 @@
 
 namespace MatomoQt::Qml {
 
-namespace ForeignNamespace {
+namespace PrivacyModeForeign {
 Q_NAMESPACE
-QML_FOREIGN_NAMESPACE(MatomoQt)
-QML_NAMED_ELEMENT(Matomo)
-} // namespace ForeignNamespace
+QML_FOREIGN_NAMESPACE(MatomoQt::PrivacyMode)
+QML_NAMED_ELEMENT(PrivacyMode)
+} // namespace PrivacyModeForeign
+
+namespace ConsentStateForeign {
+Q_NAMESPACE
+QML_FOREIGN_NAMESPACE(MatomoQt::ConsentState)
+QML_NAMED_ELEMENT(ConsentState)
+} // namespace ConsentStateForeign
+
+namespace RequestStatusForeign {
+Q_NAMESPACE
+QML_FOREIGN_NAMESPACE(MatomoQt::RequestStatus)
+QML_NAMED_ELEMENT(RequestStatus)
+} // namespace RequestStatusForeign
 
 class MatomoTracker : public QObject {
         Q_OBJECT
@@ -42,10 +53,10 @@ class MatomoTracker : public QObject {
         Q_PROPERTY(QUrl endpoint READ endpoint WRITE setEndpoint NOTIFY endpointChanged)
         Q_PROPERTY(QUrl actionUrlBase READ actionUrlBase WRITE setActionUrlBase NOTIFY actionUrlBaseChanged)
         Q_PROPERTY(int siteId READ siteId WRITE setSiteId NOTIFY siteIdChanged)
-        Q_PROPERTY(MatomoQt::PrivacyMode privacyMode READ privacyMode WRITE setPrivacyMode NOTIFY privacyModeChanged)
+        Q_PROPERTY(MatomoQt::PrivacyMode::Value privacyMode READ privacyMode WRITE setPrivacyMode NOTIFY privacyModeChanged)
         Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled NOTIFY enabledChanged)
-        Q_PROPERTY(MatomoQt::ConsentState consentState READ consentState WRITE setConsentState NOTIFY consentStateChanged)
-        Q_PROPERTY(MatomoQt::RequestStatus lastRequestStatus READ lastRequestStatus NOTIFY lastRequestStatusChanged)
+        Q_PROPERTY(MatomoQt::ConsentState::Value consentState READ consentState WRITE setConsentState NOTIFY consentStateChanged)
+        Q_PROPERTY(MatomoQt::RequestStatus::Value lastRequestStatus READ lastRequestStatus NOTIFY lastRequestStatusChanged)
         Q_PROPERTY(QString lastRequestMessage READ lastRequestMessage NOTIFY lastRequestMessageChanged)
 
     public:
@@ -60,16 +71,16 @@ class MatomoTracker : public QObject {
         [[nodiscard]] int siteId() const;
         void setSiteId(int siteId);
 
-        [[nodiscard]] PrivacyMode privacyMode() const;
-        void setPrivacyMode(PrivacyMode mode);
+        [[nodiscard]] MatomoQt::PrivacyMode::Value privacyMode() const;
+        void setPrivacyMode(MatomoQt::PrivacyMode::Value mode);
 
         [[nodiscard]] bool isEnabled() const;
         void setEnabled(bool enabled);
 
-        [[nodiscard]] ConsentState consentState() const;
-        void setConsentState(ConsentState state);
+        [[nodiscard]] MatomoQt::ConsentState::Value consentState() const;
+        void setConsentState(MatomoQt::ConsentState::Value state);
 
-        [[nodiscard]] RequestStatus lastRequestStatus() const;
+        [[nodiscard]] MatomoQt::RequestStatus::Value lastRequestStatus() const;
         [[nodiscard]] QString lastRequestMessage() const;
 
         Q_INVOKABLE bool trackPageView(const QString &path, const QString &actionName = {});
@@ -94,13 +105,11 @@ class MatomoTracker : public QObject {
         void lastRequestMessageChanged();
 
     private:
-        [[nodiscard]] static RequestStatus toRequestStatus(RequestResult::Status status);
-
         void onTrackerConfigChanged();
-        void applyRequestResult(const RequestResult &result);
+        void applyRequestResult(const MatomoQt::RequestResult &result);
 
-        Tracker m_tracker;
-        RequestStatus m_lastRequestStatus = RequestStatus::RequestInvalidConfig;
+        MatomoQt::Tracker m_tracker;
+        MatomoQt::RequestStatus::Value m_lastRequestStatus = MatomoQt::RequestStatus::Value::RequestInvalidConfig;
         QString m_lastRequestMessage;
 };
 

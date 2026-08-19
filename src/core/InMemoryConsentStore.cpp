@@ -19,11 +19,11 @@
 
 namespace MatomoQt {
 
-ConsentState InMemoryConsentStore::consentState() const {
+ConsentState::Value InMemoryConsentStore::consentState() const {
     return m_state;
 }
 
-void InMemoryConsentStore::setConsentState(ConsentState state) {
+void InMemoryConsentStore::setConsentState(ConsentState::Value state) {
     m_state = state;
 }
 

@@ -29,10 +29,10 @@ int main() {
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
     config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
-    config.privacyMode = MatomoQt::PrivacyMode::ConsentExemptWithOptOut;
+    config.privacyMode = MatomoQt::PrivacyMode::Value::ConsentExemptWithOptOut;
 
     MatomoQt::Tracker tracker(config);
-    tracker.setConsentState(MatomoQt::ConsentState::Granted);
+    tracker.setConsentState(MatomoQt::ConsentState::Value::Granted);
 
     const auto pageViewResult = tracker.trackPageView({.path = QStringLiteral("preferences")});
     const auto eventResult = tracker.trackEvent({
