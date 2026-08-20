@@ -13,6 +13,7 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
         using SiteId = qint32;
 
         QUrl endpoint;
+        QUrl actionUrlBase;
         SiteId siteId = 0;
         PrivacyMode privacyMode = PrivacyMode::RequiresConsent;
 

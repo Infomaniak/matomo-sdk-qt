@@ -5,20 +5,21 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://isocpp.org/)
 [![CMake](https://img.shields.io/badge/CMake-supported-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![Privacy](https://img.shields.io/badge/privacy-GDPR%20%2B%20Swiss%20FADP%2FnLPD-2F855A)](#privacy-model)
-[![Status](https://img.shields.io/badge/status-early%20development-F59E0B)](#current-scope)
+[![Status](https://img.shields.io/badge/status-early%20development-F59E0B)](#scope)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 C++ Qt SDK for the Matomo Tracking HTTP API.
 
-> Status: early development. The current codebase provides the C++ core target
-> and public API skeleton. Tracking calls are validated locally, but production
-> request building, network dispatching, QML support, examples and packaging are
-> still in progress.
+> Status: early development. The SDK exposes the C++ core target and can build
+> deterministic Matomo Tracking HTTP API URLs. It does not send HTTP requests
+> yet; network dispatching, QML support, examples and packaging are still in
+> progress.
 
 ## Project Context
 
-This project was started to support Matomo integration in the kDrive desktop
-application on Linux.
+This project was started to support Matomo integration in the
+[kDrive desktop](https://github.com/Infomaniak/desktop-kDrive) application on
+Linux.
 
 The SDK itself is not kDrive-specific. It is designed to stay reusable by any
 Qt or QML application that needs to send tracking data to a Matomo instance.
@@ -35,19 +36,28 @@ be defined by the host application, not by this library.
 - Stay testable without requiring a live Matomo server.
 - Remain easy to consume from a parent CMake project.
 
-## Current Scope
+## Scope
 
 The repository currently builds the `MatomoQt::Core` target. It depends on:
 
 - `Qt6::Core`
 - `Qt6::Network`
 
-The public API includes the initial tracking and privacy-oriented value types,
-including `Tracker`, `TrackerConfig`, `PageView`, `Event`, `ConsentState`,
-`PrivacyMode`, `RequestResult`, `ConsentStore` and `ClientIdStore`.
+The public API includes:
 
-The current `Tracker` implementation validates local state only. It does not
-send HTTP requests yet.
+- tracking and privacy-oriented value types such as `Tracker`, `TrackerConfig`,
+  `PageView`, `Event`, `ConsentState`, `PrivacyMode`, `RequestResult`,
+  `ConsentStore` and `ClientIdStore`;
+- `RequestBuilder` builds page view, event and ping requests for the Matomo
+  Tracking HTTP API without sending them;
+- `RequestBuildOptions` carries optional request context such as client ID,
+  User-Agent, language and screen resolution;
+- `RequestBuildResult` and `TrackingRequest` expose the build status and the
+  generated URL;
+- `UserAgentBuilder` can generate desktop User-Agent strings with
+  DeviceDetector-compatible OS tokens.
+
+`Tracker` validates local state only. It does not send HTTP requests yet.
 
 ## Non-Goals
 
@@ -104,9 +114,9 @@ target_link_libraries(my_app PRIVATE MatomoQt::Core)
 ## Minimal C++ Example
 
 ```cpp
-#include <MatomoQt/Event.h>
 #include <MatomoQt/PageView.h>
-#include <MatomoQt/Tracker.h>
+#include <MatomoQt/RequestBuilder.h>
+#include <MatomoQt/UserAgentBuilder.h>
 #include <MatomoQt/TrackerConfig.h>
 
 #include <QtCore/QString>
@@ -114,25 +124,33 @@ target_link_libraries(my_app PRIVATE MatomoQt::Core)
 
 MatomoQt::TrackerConfig config;
 config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
 config.siteId = 1;
 
-MatomoQt::Tracker tracker(config);
-tracker.setConsentState(MatomoQt::ConsentState::Granted);
+MatomoQt::RequestBuilder requestBuilder(config);
+const auto userAgent = MatomoQt::UserAgentBuilder::buildDesktopUserAgent(
+        MatomoQt::UserAgentBuilder::currentDesktopInfo(
+                QStringLiteral("ExampleApp"),
+                QStringLiteral("1.0.0")));
 
-const auto pageViewResult = tracker.trackPageView({
-        .path = QStringLiteral("preferences"),
-        .actionName = QStringLiteral("Preferences"),
-});
+const auto requestResult = requestBuilder.buildPageView(
+        {
+                .path = QStringLiteral("preferences"),
+                .actionName = QStringLiteral("Preferences"),
+        },
+        {
+                .userAgent = userAgent,
+                .language = QStringLiteral("fr-CH"),
+                .screenResolution = QStringLiteral("1920x1080"),
+        });
 
-const auto eventResult = tracker.trackEvent({
-        .category = QStringLiteral("preferences"),
-        .action = QStringLiteral("click"),
-        .name = QStringLiteral("saveButton"),
-});
+if (requestResult.accepted()) {
+    const QUrl trackingUrl = requestResult.request.url;
+    // The host application decides when and how to send the URL.
+}
 ```
 
-At the current development stage, this validates the calls locally. Network
-request generation and dispatch are planned as part of the core implementation.
+This builds the tracking URL only.
 
 ## Privacy Model
 
@@ -157,7 +175,6 @@ rules and visitor profile settings, is also part of the compliance story.
 
 The next development areas are expected to focus on:
 
-- Matomo request generation for page views, events and pings.
 - Consent and opt-out behavior in the tracker flow.
 - Network dispatch with deterministic tests.
 - Manual QML tracking APIs.

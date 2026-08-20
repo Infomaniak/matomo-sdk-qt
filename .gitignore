@@ -48,6 +48,14 @@ Thumbs.db
 # Generated PR description file
 PR.md
 
+# Code coverage reports
+coverage.md
+coverage.xml
+coverage-html/
+*.gcda
+*.gcno
+*.gcov
+
 # Local runner secrets
 .github/runner/*.env
 !.github/runner/*.env.example
