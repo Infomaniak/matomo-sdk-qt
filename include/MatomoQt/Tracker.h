@@ -62,9 +62,6 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         /** Returns the current tracker configuration. */
         [[nodiscard]] TrackerConfig config() const;
 
-        /** Replaces the tracker configuration. */
-        void setConfig(const TrackerConfig &config);
-
         /** Returns the current consent state, read from the active store. */
         [[nodiscard]] ConsentState::Value consentState() const;
 
@@ -106,7 +103,6 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         [[nodiscard]] TrackerStats stats() const;
 
     signals:
-        void configChanged();
         void consentStateChanged(ConsentState::Value state);
         void enabledChanged(bool enabled);
         void dispatchFinished(const DispatchResult &result);

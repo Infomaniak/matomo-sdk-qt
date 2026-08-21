@@ -472,17 +472,12 @@ void TrackerIntegrationTest::clearCustomDimensionRemovesFromRequest() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    auto config = validConfig(server.url());
-    config.customDimensions[3] = QStringLiteral("beta");
+    auto configWithoutDim = validConfig(server.url());
+    Tracker trackerWithoutDim(configWithoutDim);
+    trackerWithoutDim.setConsentState(ConsentState::Value::Granted);
 
-    Tracker tracker(config);
-    tracker.setConsentState(ConsentState::Value::Granted);
-
-    config.customDimensions.remove(3);
-    tracker.setConfig(config);
-
-    QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
-    (void) tracker.trackPageView({.path = QStringLiteral("settings")});
+    QSignalSpy dispatchSpy(&trackerWithoutDim, &Tracker::dispatchFinished);
+    (void) trackerWithoutDim.trackPageView({.path = QStringLiteral("settings")});
 
     QVERIFY(dispatchSpy.wait(5000));
 

@@ -97,21 +97,6 @@ TrackerConfig Tracker::config() const {
     return m_config;
 }
 
-void Tracker::setConfig(const TrackerConfig &config) {
-    if (m_config == config) {
-        return;
-    }
-
-    const auto oldDispatcherConfig = m_config.networkDispatcherConfig;
-    m_config = config;
-    m_requestBuilder.setConfig(m_config);
-
-    if (m_config.networkDispatcherConfig != oldDispatcherConfig) {
-        m_dispatcher->setConfig(m_config.networkDispatcherConfig);
-    }
-
-    emit configChanged();
-}
 
 ConsentState::Value Tracker::consentState() const {
     return m_consentStore->consentState();
@@ -138,7 +123,7 @@ bool Tracker::isEnabled() const {
     return m_enabled;
 }
 
-void Tracker::setEnabled(bool enabled) {
+void Tracker::setEnabled(const bool enabled) {
     if (m_enabled == enabled) {
         return;
     }

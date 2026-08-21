@@ -20,14 +20,19 @@
 #include <MatomoQt/ConsentState.h>
 #include <MatomoQt/DispatchResult.h>
 #include <MatomoQt/DispatchStatus.h>
+#include <MatomoQt/InMemoryClientIdStore.h>
+#include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/PrivacyMode.h>
 #include <MatomoQt/RequestStatus.h>
 #include <MatomoQt/Tracker.h>
+#include <MatomoQt/TrackerConfig.h>
 
 #include <QtCore/QObject>
 #include <QtCore/QUrl>
 #include <QtQml/qqmlregistration.h>
 #include <QtQml/QQmlEngine>
+
+#include <memory>
 
 namespace MatomoQt::Qml {
 
@@ -129,12 +134,15 @@ class MatomoTracker : public QObject {
         void dispatchFinished(DispatchStatus::Value status, int httpStatus, const QString &message);
 
     private:
-        void onTrackerConfigChanged();
+        void recreateTracker();
         void applyRequestResult(const RequestResult &result);
         void applyDispatchResult(const DispatchResult &result);
 
-        Tracker m_tracker;
-        TrackerConfig m_lastConfig;
+        TrackerConfig m_config;
+        InMemoryConsentStore m_consentStore;
+        InMemoryClientIdStore m_clientIdStore;
+        std::unique_ptr<Tracker> m_tracker;
+        bool m_enabled = true;
         RequestResult m_lastRequestResult;
         DispatchResult m_lastDispatchResult;
         bool m_hasDispatchResult = false;
