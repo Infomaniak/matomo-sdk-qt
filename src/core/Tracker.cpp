@@ -18,6 +18,8 @@
 #include <MatomoQt/Tracker.h>
 
 #include <MatomoQt/CustomDimension.h>
+#include <MatomoQt/InMemoryClientIdStore.h>
+#include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/Logging.h>
 #include <MatomoQt/PrivacyController.h>
 #include <MatomoQt/RequestBuildOptions.h>
@@ -58,29 +60,35 @@ bool isValidClientId(const QString &clientId) {
 } // namespace
 
 Tracker::Tracker(QObject *parent) :
-    QObject(parent),
-    m_dispatcher(new NetworkDispatcher(this)),
-    m_requestBuilder(m_config) {
-
-    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+    Tracker(TrackerConfig{}, nullptr, nullptr, parent) {
 }
 
 Tracker::Tracker(TrackerConfig config, QObject *parent) :
-    QObject(parent),
-    m_config(std::move(config)),
-    m_dispatcher(new NetworkDispatcher(this)),
-    m_requestBuilder(m_config) {
-
-    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+    Tracker(std::move(config), nullptr, nullptr, parent) {
 }
 
-Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, QObject *parent) :
+Tracker::Tracker(TrackerConfig config, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent) :
+    Tracker(std::move(config), nullptr, consentStore, clientIdStore, parent) {
+}
+
+Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent) :
     QObject(parent),
     m_config(std::move(config)),
+    m_ownedConsentStore(consentStore ? nullptr : std::make_unique<InMemoryConsentStore>()),
+    m_ownedClientIdStore(clientIdStore ? nullptr : std::make_unique<InMemoryClientIdStore>()),
+    m_consentStore(consentStore ? consentStore : m_ownedConsentStore.get()),
+    m_clientIdStore(clientIdStore ? clientIdStore : m_ownedClientIdStore.get()),
     m_dispatcher(new NetworkDispatcher(nam, this)),
     m_requestBuilder(m_config) {
 
+    m_dispatcher->setConfig(m_config.networkDispatcherConfig);
+
     connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+
+    if (m_consentStore->consentState() == ConsentState::Value::Denied
+        || m_consentStore->consentState() == ConsentState::Value::Withdrawn) {
+        clearVisitorIdentity();
+    }
 }
 
 Tracker::~Tracker() = default;
@@ -94,8 +102,14 @@ void Tracker::setConfig(const TrackerConfig &config) {
         return;
     }
 
+    const auto oldDispatcherConfig = m_config.networkDispatcherConfig;
     m_config = config;
     m_requestBuilder.setConfig(m_config);
+
+    if (m_config.networkDispatcherConfig != oldDispatcherConfig) {
+        m_dispatcher->setConfig(m_config.networkDispatcherConfig);
+    }
+
     emit configChanged();
 }
 
@@ -133,30 +147,6 @@ void Tracker::setEnabled(bool enabled) {
     emit enabledChanged(m_enabled);
 }
 
-void Tracker::setConsentStore(ConsentStore *store) {
-    const auto oldState = m_consentStore->consentState();
-    m_defaultConsentStore.setConsentState(m_consentStore->consentState());
-    m_consentStore = store ? store : &m_defaultConsentStore;
-
-    const auto newState = m_consentStore->consentState();
-    if (newState == ConsentState::Value::Denied || newState == ConsentState::Value::Withdrawn) {
-        clearVisitorIdentity();
-    }
-    if (oldState != newState) {
-        emit consentStateChanged(newState);
-    }
-}
-
-void Tracker::setClientIdStore(ClientIdStore *store) {
-    m_defaultClientIdStore.setClientId(m_clientIdStore->clientId());
-    m_clientIdStore = store ? store : &m_defaultClientIdStore;
-
-    if (m_consentStore->consentState() == ConsentState::Value::Denied
-        || m_consentStore->consentState() == ConsentState::Value::Withdrawn) {
-        clearVisitorIdentity();
-    }
-}
-
 QString Tracker::clientId() const {
     return m_clientIdStore->clientId();
 }
@@ -174,52 +164,12 @@ void Tracker::resetClientId() {
     clearVisitorIdentity();
 }
 
-void Tracker::setCustomDimension(const int id, const QString &value) {
-    if (value.isEmpty()) {
-        m_customDimensions.remove(id);
-    } else {
-        m_customDimensions[id] = value;
-    }
-}
-
-void Tracker::clearCustomDimension(const int id) {
-    m_customDimensions.remove(id);
-}
-
 void Tracker::forceNewVisit() {
     m_forceNewVisit = true;
 }
 
 TrackerStats Tracker::stats() const {
     return m_stats;
-}
-
-void Tracker::resetStats() {
-    m_stats = {};
-    emit statsChanged();
-}
-
-void Tracker::setNetworkAccessManager(QNetworkAccessManager *nam) {
-    const auto config = m_dispatcher->config();
-    const bool breakerOpen = m_dispatcher->isCircuitBreakerOpen();
-
-    delete m_dispatcher;
-    m_dispatcher = new NetworkDispatcher(nam, this);
-    m_dispatcher->setConfig(config);
-
-    if (breakerOpen) {
-        m_dispatcher->resetCircuitBreaker();
-    }
-
-    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
-}
-
-void Tracker::setUserAgent(const QString &userAgent) {
-    m_userAgent = userAgent;
-}
-
-void Tracker::setNetworkDispatcherConfig(const NetworkDispatcherConfig &config) {
-    m_dispatcher->setConfig(config);
 }
 
 RequestResult Tracker::trackPageView(const PageView &pageView) {
@@ -361,7 +311,7 @@ void Tracker::ensureClientId() {
 RequestBuildOptions Tracker::buildOptions() const {
     RequestBuildOptions options;
     options.clientId = m_clientIdStore->clientId();
-    options.userAgent = m_userAgent;
+    options.userAgent = m_config.userAgent;
     options.language = QLocale().name();
     options.screenResolution = {};
     return options;
@@ -376,7 +326,7 @@ QList<CustomDimension> Tracker::mergeDimensions(const QList<CustomDimension> &ca
         usedIds.insert(dim.id);
     }
 
-    for (auto it = m_customDimensions.constBegin(); it != m_customDimensions.constEnd(); ++it) {
+    for (auto it = m_config.customDimensions.constBegin(); it != m_config.customDimensions.constEnd(); ++it) {
         if (!usedIds.contains(it.key())) {
             merged.append({.id = it.key(), .value = it.value()});
         }

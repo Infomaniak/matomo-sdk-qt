@@ -453,9 +453,11 @@ void TrackerIntegrationTest::customDimensionAppearsInRequest() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    auto config = validConfig(server.url());
+    config.customDimensions[3] = QStringLiteral("beta");
+
+    Tracker tracker(config);
     tracker.setConsentState(ConsentState::Value::Granted);
-    tracker.setCustomDimension(3, QStringLiteral("beta"));
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("settings")});
@@ -470,10 +472,14 @@ void TrackerIntegrationTest::clearCustomDimensionRemovesFromRequest() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    auto config = validConfig(server.url());
+    config.customDimensions[3] = QStringLiteral("beta");
+
+    Tracker tracker(config);
     tracker.setConsentState(ConsentState::Value::Granted);
-    tracker.setCustomDimension(3, QStringLiteral("beta"));
-    tracker.clearCustomDimension(3);
+
+    config.customDimensions.remove(3);
+    tracker.setConfig(config);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("settings")});
@@ -488,9 +494,11 @@ void TrackerIntegrationTest::pingDoesNotCarryCustomDimensions() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    auto config = validConfig(server.url());
+    config.customDimensions[3] = QStringLiteral("beta");
+
+    Tracker tracker(config);
     tracker.setConsentState(ConsentState::Value::Granted);
-    tracker.setCustomDimension(3, QStringLiteral("beta"));
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.sendPing();
