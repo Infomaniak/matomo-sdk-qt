@@ -132,6 +132,11 @@ TrackerConfig validConfig(const QUrl &endpoint) {
     return config;
 }
 
+struct DefaultStores {
+    InMemoryConsentStore consent;
+    InMemoryClientIdStore clientId;
+};
+
 QUrlQuery queryFor(const QString &requestPath) {
     const int queryStart = requestPath.indexOf(QLatin1Char('?'));
     if (queryStart < 0) {
@@ -198,7 +203,8 @@ void TrackerIntegrationTest::trackPageViewDispatchesToServer() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -221,7 +227,8 @@ void TrackerIntegrationTest::trackEventDispatchesToServer() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -248,7 +255,8 @@ void TrackerIntegrationTest::sendPingDispatchesToServer() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -269,7 +277,8 @@ void TrackerIntegrationTest::pingCarriesLastPageViewPath() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -294,7 +303,8 @@ void TrackerIntegrationTest::pingWithoutPageViewFallsBackToBase() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -315,7 +325,8 @@ void TrackerIntegrationTest::blockedByPrivacyDoesNotReachDispatcher() {
     TrackerConfig config = validConfig(server.url());
     config.privacyMode = PrivacyMode::Value::RequiresConsent;
 
-    Tracker tracker(config);
+    DefaultStores stores;
+    Tracker tracker(config, &stores.consent, &stores.clientId);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     QSignalSpy statsSpy(&tracker, &Tracker::statsChanged);
@@ -337,7 +348,8 @@ void TrackerIntegrationTest::disabledTrackerDoesNotDispatch() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setEnabled(false);
 
@@ -358,7 +370,8 @@ void TrackerIntegrationTest::pageViewIdIsPresentOnPageView() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -376,7 +389,8 @@ void TrackerIntegrationTest::pageViewIdIsReusedOnEvent() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -403,7 +417,8 @@ void TrackerIntegrationTest::pageViewIdClearedAfterConsentDenial() {
     TrackerConfig config = validConfig(server.url());
     config.privacyMode = PrivacyMode::Value::RequiresConsent;
 
-    Tracker tracker(config);
+    DefaultStores stores;
+    Tracker tracker(config, &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -429,7 +444,8 @@ void TrackerIntegrationTest::forceNewVisitAddsNewVisitParam() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -456,7 +472,8 @@ void TrackerIntegrationTest::customDimensionAppearsInRequest() {
     auto config = validConfig(server.url());
     config.customDimensions[3] = QStringLiteral("beta");
 
-    Tracker tracker(config);
+    DefaultStores stores;
+    Tracker tracker(config, &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -473,7 +490,8 @@ void TrackerIntegrationTest::clearCustomDimensionRemovesFromRequest() {
     QVERIFY(server.start());
 
     auto configWithoutDim = validConfig(server.url());
-    Tracker trackerWithoutDim(configWithoutDim);
+    DefaultStores storesWithoutDim;
+    Tracker trackerWithoutDim(configWithoutDim, &storesWithoutDim.consent, &storesWithoutDim.clientId);
     trackerWithoutDim.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&trackerWithoutDim, &Tracker::dispatchFinished);
@@ -492,7 +510,8 @@ void TrackerIntegrationTest::pingDoesNotCarryCustomDimensions() {
     auto config = validConfig(server.url());
     config.customDimensions[3] = QStringLiteral("beta");
 
-    Tracker tracker(config);
+    DefaultStores stores;
+    Tracker tracker(config, &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -512,7 +531,8 @@ void TrackerIntegrationTest::runtimeStatsAreAccurate() {
     TrackerConfig config = validConfig(server.url());
     config.privacyMode = PrivacyMode::Value::RequiresConsent;
 
-    Tracker tracker(config);
+    DefaultStores stores;
+    Tracker tracker(config, &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     (void) tracker.trackPageView({.path = QStringLiteral("page1")});
@@ -536,7 +556,8 @@ void TrackerIntegrationTest::clientIdIsAutoGenerated() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QVERIFY(tracker.clientId().isEmpty());
@@ -561,7 +582,8 @@ void TrackerIntegrationTest::dispatchFinishedSignalEmitted() {
     TestHttpServer server;
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -580,7 +602,8 @@ void TrackerIntegrationTest::failedCountIncrementedOnFailure() {
     TestHttpServer server(TestHttpServer::Mode::Respond500);
     QVERIFY(server.start());
 
-    Tracker tracker(validConfig(server.url()));
+    DefaultStores stores;
+    Tracker tracker(validConfig(server.url()), &stores.consent, &stores.clientId);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);

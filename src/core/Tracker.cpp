@@ -18,8 +18,6 @@
 #include <MatomoQt/Tracker.h>
 
 #include <MatomoQt/CustomDimension.h>
-#include <MatomoQt/InMemoryClientIdStore.h>
-#include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/Logging.h>
 #include <MatomoQt/PrivacyController.h>
 #include <MatomoQt/RequestBuildOptions.h>
@@ -59,14 +57,6 @@ bool isValidClientId(const QString &clientId) {
 
 } // namespace
 
-Tracker::Tracker(QObject *parent) :
-    Tracker(TrackerConfig{}, nullptr, nullptr, parent) {
-}
-
-Tracker::Tracker(TrackerConfig config, QObject *parent) :
-    Tracker(std::move(config), nullptr, nullptr, parent) {
-}
-
 Tracker::Tracker(TrackerConfig config, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent) :
     Tracker(std::move(config), nullptr, consentStore, clientIdStore, parent) {
 }
@@ -74,10 +64,8 @@ Tracker::Tracker(TrackerConfig config, ConsentStore *consentStore, ClientIdStore
 Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent) :
     QObject(parent),
     m_config(std::move(config)),
-    m_ownedConsentStore(consentStore ? nullptr : std::make_unique<InMemoryConsentStore>()),
-    m_ownedClientIdStore(clientIdStore ? nullptr : std::make_unique<InMemoryClientIdStore>()),
-    m_consentStore(consentStore ? consentStore : m_ownedConsentStore.get()),
-    m_clientIdStore(clientIdStore ? clientIdStore : m_ownedClientIdStore.get()),
+    m_consentStore(consentStore),
+    m_clientIdStore(clientIdStore),
     m_dispatcher(new NetworkDispatcher(nam, this)),
     m_requestBuilder(m_config) {
 

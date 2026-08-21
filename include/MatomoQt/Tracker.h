@@ -33,8 +33,6 @@
 
 #include <QtCore/QObject>
 
-#include <memory>
-
 class QNetworkAccessManager;
 
 namespace MatomoQt {
@@ -53,8 +51,6 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         Q_OBJECT
 
     public:
-        explicit Tracker(QObject *parent = nullptr);
-        explicit Tracker(TrackerConfig config, QObject *parent = nullptr);
         explicit Tracker(TrackerConfig config, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent = nullptr);
         explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent);
         ~Tracker() override;
@@ -122,8 +118,6 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         void onDispatchFinished(const DispatchResult &result);
 
         TrackerConfig m_config;
-        std::unique_ptr<ConsentStore> m_ownedConsentStore;
-        std::unique_ptr<ClientIdStore> m_ownedClientIdStore;
         ConsentStore *m_consentStore;
         ClientIdStore *m_clientIdStore;
         bool m_enabled = true;
