@@ -135,6 +135,9 @@ void QmlModuleIntegrationTest::qmlModuleImportsAndRespectsConsentGate() {
     QCoreApplication::setOrganizationName(QStringLiteral("MatomoQtTest"));
     QCoreApplication::setApplicationName(QStringLiteral("QmlModuleTest"));
 
+    QSettings::defaultFormat(); // ensure format is set
+    QSettings(QStringLiteral("MatomoQtTest"), QStringLiteral("QmlModuleTest")).remove(QString());
+
     QQmlEngine engine;
 
     const QString moduleOutputDir = QStringLiteral(MATOMOQT_QML_IMPORT_PATH);
