@@ -132,6 +132,9 @@ void QmlModuleIntegrationTest::qmlModuleImportsAndRespectsConsentGate() {
     TestHttpServer server;
     QVERIFY(server.start());
 
+    QCoreApplication::setOrganizationName(QStringLiteral("MatomoQtTest"));
+    QCoreApplication::setApplicationName(QStringLiteral("QmlModuleTest"));
+
     QQmlEngine engine;
 
     const QString moduleOutputDir = QStringLiteral(MATOMOQT_QML_IMPORT_PATH);
