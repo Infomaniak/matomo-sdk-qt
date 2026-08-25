@@ -136,7 +136,7 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionU
     // QUrlQuery leaves literal '+' unencoded, but Matomo (PHP) decodes '+' as a space in query
     // values, corrupting values like "C++" or exponent-formatted event values (e.g. 1e+20).
     url.setQuery(query.toString(QUrl::FullyEncoded).replace(QLatin1Char('+'), QLatin1String("%2B")), QUrl::StrictMode);
-    return RequestBuildResult{RequestResult{RequestStatus::Value::Accepted, {}}, TrackingRequest{url}};
+    return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, TrackingRequest{url}};
 }
 
 } // namespace
@@ -171,7 +171,7 @@ RequestBuildResult RequestBuilder::buildPageView(const PageView &pageView, const
             return invalidPayload(std::move(errorMessage));
         }
 
-        return RequestBuildResult{RequestResult{RequestStatus::Value::Accepted, {}}, {}};
+        return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });
 }
 
@@ -197,7 +197,7 @@ RequestBuildResult RequestBuilder::buildEvent(const Event &event, const RequestB
             return invalidPayload(std::move(errorMessage));
         }
 
-        return RequestBuildResult{RequestResult{RequestStatus::Value::Accepted, {}}, {}};
+        return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });
 }
 
@@ -213,7 +213,7 @@ RequestBuildResult RequestBuilder::buildPing(const QString &path, const RequestB
 
     return buildRequest(m_config, m_config.actionUrlBase.resolved(actionReference), options, [](QUrlQuery *query) {
         query->addQueryItem(QStringLiteral("ping"), QStringLiteral("1"));
-        return RequestBuildResult{RequestResult{RequestStatus::Value::Accepted, {}}, {}};
+        return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });
 }
 

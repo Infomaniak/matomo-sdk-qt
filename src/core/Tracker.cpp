@@ -260,7 +260,7 @@ RequestResult Tracker::trackPageView(const PageView &pageView) {
         recordSent();
     }
 
-    return result(RequestStatus::Value::Accepted);
+    return result(RequestStatus::Value::RequestAccepted);
 }
 
 RequestResult Tracker::trackEvent(const Event &event) {
@@ -297,7 +297,7 @@ RequestResult Tracker::trackEvent(const Event &event) {
         recordSent();
     }
 
-    return result(RequestStatus::Value::Accepted);
+    return result(RequestStatus::Value::RequestAccepted);
 }
 
 RequestResult Tracker::sendPing() {
@@ -327,7 +327,7 @@ RequestResult Tracker::sendPing() {
         recordSent();
     }
 
-    return result(RequestStatus::Value::Accepted);
+    return result(RequestStatus::Value::RequestAccepted);
 }
 
 RequestResult Tracker::validateTrackingCall() const {
@@ -343,7 +343,7 @@ RequestResult Tracker::validateTrackingCall() const {
         return result(RequestStatus::Value::RequestBlockedByPrivacy, QStringLiteral("Tracking blocked by privacy settings."));
     }
 
-    return result(RequestStatus::Value::Accepted);
+    return result(RequestStatus::Value::RequestAccepted);
 }
 
 void Tracker::clearVisitorIdentity() {

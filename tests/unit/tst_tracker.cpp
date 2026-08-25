@@ -171,10 +171,10 @@ void TrackerTest::trackerAcceptsCallsAfterConsent() {
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QCOMPARE(consentSpy.count(), 1);
-    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::Accepted);
+    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestAccepted);
     QCOMPARE(tracker.trackEvent({.category = QStringLiteral("preferences"), .action = QStringLiteral("click")}).status,
-             RequestStatus::Value::Accepted);
-    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::Accepted);
+             RequestStatus::Value::RequestAccepted);
+    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestAccepted);
 }
 
 void TrackerTest::trackerRejectsInvalidPayloadBeforeTrackerState() {
@@ -266,7 +266,7 @@ void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
 
     config.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
     tracker.setConfig(config);
-    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::Accepted);
+    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestAccepted);
 
     tracker.setConsentState(ConsentState::Value::Denied);
     QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestBlockedByPrivacy);

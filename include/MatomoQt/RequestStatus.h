@@ -28,7 +28,7 @@ Q_NAMESPACE_EXPORT(MATOMOQT_CORE_EXPORT)
 
 /** Public-facing status of a tracking request. */
 enum class Value {
-    Accepted,
+    RequestAccepted,
     RequestDisabled,
     RequestBlockedByPrivacy,
     RequestInvalidConfig,
@@ -38,8 +38,8 @@ Q_ENUM_NS(Value)
 
 [[nodiscard]] inline QString enumToString(Value status) {
     switch (status) {
-        case Value::Accepted:
-            return QStringLiteral("Accepted");
+        case Value::RequestAccepted:
+            return QStringLiteral("RequestAccepted");
         case Value::RequestDisabled:
             return QStringLiteral("RequestDisabled");
         case Value::RequestBlockedByPrivacy:
