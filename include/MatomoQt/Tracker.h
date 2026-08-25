@@ -112,7 +112,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         [[nodiscard]] RequestBuildOptions buildOptions() const;
         [[nodiscard]] QList<CustomDimension> mergeDimensions(const QList<CustomDimension> &callDimensions) const;
         void addTrackerParameters(QUrl &url, const QString &pageViewId, bool forceNewVisit) const;
-        void ensureClientId();
+        void ensureClientId() const;
         void recordBlocked();
         void recordSent();
         void onDispatchFinished(const DispatchResult &result);

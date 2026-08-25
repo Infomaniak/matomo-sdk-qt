@@ -275,7 +275,7 @@ void Tracker::clearVisitorIdentity() {
     m_lastPageViewPath.clear();
 }
 
-void Tracker::ensureClientId() {
+void Tracker::ensureClientId() const {
     if (m_clientIdStore->clientId().isEmpty()) {
         m_clientIdStore->setClientId(generateClientId());
     }
