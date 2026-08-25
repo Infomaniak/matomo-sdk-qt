@@ -34,16 +34,4 @@ enum class Value {
 };
 Q_ENUM_NS(Value)
 
-[[nodiscard]] inline QString enumToString(Value mode) {
-    switch (mode) {
-        case Value::Disabled:
-            return QStringLiteral("Disabled");
-        case Value::RequiresConsent:
-            return QStringLiteral("RequiresConsent");
-        case Value::ConsentExemptWithOptOut:
-            return QStringLiteral("ConsentExemptWithOptOut");
-    }
-    return QStringLiteral("Disabled");
-}
-
 } // namespace MatomoQt::PrivacyMode
