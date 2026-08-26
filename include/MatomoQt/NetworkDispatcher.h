@@ -117,7 +117,6 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
 
         NetworkDispatcherConfig m_config;
         QNetworkAccessManager *m_nam = nullptr;
-        bool m_ownsNam = false;
         int m_consecutiveFailures = 0;
         bool m_circuitBreakerOpen = false;
         QHash<QNetworkReply *, PendingReply> m_pendingReplies;

@@ -48,18 +48,11 @@ QUrl addCacheBuster(QUrl url) {
 
 NetworkDispatcher::NetworkDispatcher(QObject *parent) :
     QObject(parent),
-    m_nam(new QNetworkAccessManager(this)),
-    m_ownsNam(true) {}
+    m_nam(new QNetworkAccessManager(this)) {}
 
 NetworkDispatcher::NetworkDispatcher(QNetworkAccessManager *nam, QObject *parent) :
     QObject(parent),
-    m_nam(nam),
-    m_ownsNam(false) {
-    if (m_nam == nullptr) {
-        m_nam = new QNetworkAccessManager(this);
-        m_ownsNam = true;
-    }
-}
+    m_nam(nam ? nam : new QNetworkAccessManager(this)) {}
 
 NetworkDispatcher::~NetworkDispatcher() {
     for (auto it = m_pendingReplies.begin(); it != m_pendingReplies.end(); ++it) {
