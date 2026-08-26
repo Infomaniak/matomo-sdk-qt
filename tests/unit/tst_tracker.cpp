@@ -96,7 +96,7 @@ void TrackerTest::defaultConfigIsPrivacySafe() {
 
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    const Tracker tracker(TrackerConfig{}, &consentStore, &clientIdStore);
+    const Tracker tracker(TrackerConfig{}, consentStore, clientIdStore);
     QCOMPARE(tracker.consentState(), ConsentState::Value::Unknown);
     QVERIFY(tracker.isEnabled());
 }
@@ -170,7 +170,7 @@ void TrackerTest::trackerDoesNotAcceptWithoutConsentByDefault() {
 
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(config, &consentStore, &clientIdStore);
+    Tracker tracker(config, consentStore, clientIdStore);
     const auto result = tracker.trackPageView({.path = QStringLiteral("preferences")});
 
     QVERIFY(!result.accepted());
@@ -185,12 +185,12 @@ void TrackerTest::trackerAcceptsCallsAfterConsent() {
 
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(config, &consentStore, &clientIdStore);
+    Tracker tracker(config, consentStore, clientIdStore);
     QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QCOMPARE(consentSpy.count(), 1);
-    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::Accepted);
+    QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestAccepted);
     QCOMPARE(tracker.trackEvent({.category = QStringLiteral("preferences"), .action = QStringLiteral("click")}).status,
              RequestStatus::Value::RequestAccepted);
     QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestAccepted);
@@ -199,7 +199,7 @@ void TrackerTest::trackerAcceptsCallsAfterConsent() {
 void TrackerTest::trackerRejectsInvalidPayloadBeforeTrackerState() {
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(TrackerConfig{}, &consentStore, &clientIdStore);
+    Tracker tracker(TrackerConfig{}, consentStore, clientIdStore);
 
     QCOMPARE(tracker.trackPageView({}).status, RequestStatus::Value::RequestInvalidPayload);
     QCOMPARE(tracker.trackEvent({}).status, RequestStatus::Value::RequestInvalidPayload);
@@ -208,7 +208,7 @@ void TrackerTest::trackerRejectsInvalidPayloadBeforeTrackerState() {
 void TrackerTest::trackerRejectsInvalidConfigForValidTrackingCalls() {
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(TrackerConfig{}, &consentStore, &clientIdStore);
+    Tracker tracker(TrackerConfig{}, consentStore, clientIdStore);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestInvalidConfig);
@@ -224,7 +224,7 @@ void TrackerTest::trackerRejectsInvalidPayloadAfterConsent() {
 
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(config, &consentStore, &clientIdStore);
+    Tracker tracker(config, consentStore, clientIdStore);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QCOMPARE(tracker.trackPageView({}).status, RequestStatus::Value::RequestInvalidPayload);
@@ -250,7 +250,7 @@ void TrackerTest::trackerDoesNotEmitSignalsForUnchangedValues() {
 
     InMemoryConsentStore consentStore;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(config, &consentStore, &clientIdStore);
+    Tracker tracker(config, consentStore, clientIdStore);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
@@ -272,14 +272,14 @@ void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
 
     InMemoryConsentStore consentStore1;
     InMemoryClientIdStore clientIdStore1;
-    Tracker tracker(config, &consentStore1, &clientIdStore1);
+    Tracker tracker(config, consentStore1, clientIdStore1);
     QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestBlockedByPrivacy);
 
     TrackerConfig optOutConfig = config;
     optOutConfig.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
     InMemoryConsentStore consentStore2;
     InMemoryClientIdStore clientIdStore2;
-    Tracker optOutTracker(optOutConfig, &consentStore2, &clientIdStore2);
+    Tracker optOutTracker(optOutConfig, consentStore2, clientIdStore2);
     QCOMPARE(optOutTracker.sendPing().status, RequestStatus::Value::RequestAccepted);
 
     optOutTracker.setConsentState(ConsentState::Value::Denied);
@@ -292,7 +292,7 @@ void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
 void TrackerTest::trackerPersistsConsentStateToStore() {
     InMemoryConsentStore store;
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(TrackerConfig{}, &store, &clientIdStore);
+    Tracker tracker(TrackerConfig{}, store, clientIdStore);
 
     tracker.setConsentState(ConsentState::Value::Granted);
     QCOMPARE(store.consentState(), ConsentState::Value::Granted);
@@ -305,7 +305,8 @@ void TrackerTest::trackerPersistsConsentStateToStore() {
 
 void TrackerTest::trackerDoesNotEmitUnpersistedConsentState() {
     QSettingsConsentStore store(nullptr);
-    Tracker tracker(TrackerConfig{}, &store, nullptr);
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(TrackerConfig{}, store, clientIdStore);
 
     QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
     tracker.setConsentState(ConsentState::Value::Granted);
@@ -319,7 +320,7 @@ void TrackerTest::trackerReadsConsentStateFromStore() {
     store.setConsentState(ConsentState::Value::Granted);
 
     InMemoryClientIdStore clientIdStore;
-    Tracker tracker(TrackerConfig{}, &store, &clientIdStore);
+    Tracker tracker(TrackerConfig{}, store, clientIdStore);
     QCOMPARE(tracker.consentState(), ConsentState::Value::Granted);
 }
 
@@ -328,7 +329,7 @@ void TrackerTest::trackerResetClientIdClearsStore() {
     store.setClientId(QStringLiteral("abc123"));
 
     InMemoryConsentStore consentStore;
-    Tracker tracker(TrackerConfig{}, &consentStore, &store);
+    Tracker tracker(TrackerConfig{}, consentStore, store);
     tracker.resetClientId();
 
     QVERIFY(store.clientId().isEmpty());
@@ -345,7 +346,7 @@ void TrackerTest::trackerDenialClearsPersistedClientId() {
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
     InMemoryConsentStore consentStore;
-    Tracker tracker(config, &consentStore, &store);
+    Tracker tracker(config, consentStore, store);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QVERIFY(tracker.trackPageView({.path = QStringLiteral("preferences")}).accepted());
@@ -365,7 +366,7 @@ void TrackerTest::trackerWithdrawalClearsPersistedClientId() {
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
     InMemoryConsentStore consentStore;
-    Tracker tracker(config, &consentStore, &store);
+    Tracker tracker(config, consentStore, store);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QVERIFY(tracker.trackPageView({.path = QStringLiteral("preferences")}).accepted());
@@ -380,7 +381,7 @@ void TrackerTest::trackerReadsClientIdFromStore() {
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
     InMemoryConsentStore consentStore;
-    Tracker tracker(TrackerConfig{}, &consentStore, &store);
+    Tracker tracker(TrackerConfig{}, consentStore, store);
     QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
 }
 
@@ -388,7 +389,7 @@ void TrackerTest::trackerWritesClientIdToStore() {
     InMemoryClientIdStore store;
 
     InMemoryConsentStore consentStore;
-    Tracker tracker(TrackerConfig{}, &consentStore, &store);
+    Tracker tracker(TrackerConfig{}, consentStore, store);
     QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
 
     QCOMPARE(store.clientId(), QStringLiteral("0123456789abcdef"));
@@ -399,7 +400,8 @@ void TrackerTest::trackerRejectsInvalidClientId() {
     InMemoryClientIdStore store;
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
-    Tracker tracker(TrackerConfig{}, nullptr, &store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(TrackerConfig{}, consentStore, store);
 
     QVERIFY(!tracker.setClientId(QStringLiteral("not-a-client-id")));
     QCOMPARE(store.clientId(), QStringLiteral("0123456789abcdef"));
@@ -417,7 +419,7 @@ void TrackerTest::trackerConstructsWithDeniedStoreClearsClientId() {
     InMemoryConsentStore consentStore;
     consentStore.setConsentState(ConsentState::Value::Denied);
 
-    Tracker tracker(config, &consentStore, &idStore);
+    Tracker tracker(config, consentStore, idStore);
 
     QVERIFY(idStore.clientId().isEmpty());
     QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestBlockedByPrivacy);
@@ -434,7 +436,7 @@ void TrackerTest::trackerConstructsWithWithdrawnStoreClearsClientId() {
     InMemoryConsentStore consentStore;
     consentStore.setConsentState(ConsentState::Value::Withdrawn);
 
-    Tracker tracker(config, &consentStore, &idStore);
+    Tracker tracker(config, consentStore, idStore);
 
     QVERIFY(idStore.clientId().isEmpty());
     QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestBlockedByPrivacy);
@@ -450,14 +452,14 @@ void TrackerTest::qSettingsStorePersistsConsentAcrossTrackerInstances() {
 
     {
         InMemoryClientIdStore clientIdStore;
-        Tracker tracker(config, &consentStore, &clientIdStore);
+        Tracker tracker(config, consentStore, clientIdStore);
         tracker.setConsentState(ConsentState::Value::Granted);
         QCOMPARE(tracker.consentState(), ConsentState::Value::Granted);
     }
 
     QSettingsConsentStore freshConsentStore(settings);
     InMemoryClientIdStore freshClientIdStore;
-    Tracker freshTracker(config, &freshConsentStore, &freshClientIdStore);
+    Tracker freshTracker(config, freshConsentStore, freshClientIdStore);
     QCOMPARE(freshTracker.consentState(), ConsentState::Value::Granted);
 }
 
@@ -472,14 +474,14 @@ void TrackerTest::qSettingsStorePersistsClientIdAcrossTrackerInstances() {
 
     {
         InMemoryConsentStore consentStore;
-        Tracker tracker(config, &consentStore, &clientIdStore);
+        Tracker tracker(config, consentStore, clientIdStore);
         QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
         QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
     }
 
     InMemoryConsentStore freshConsentStore;
     QSettingsClientIdStore freshClientIdStore(settings);
-    Tracker freshTracker(config, &freshConsentStore, &freshClientIdStore);
+    Tracker freshTracker(config, freshConsentStore, freshClientIdStore);
     QCOMPARE(freshTracker.clientId(), QStringLiteral("0123456789abcdef"));
 }
 
@@ -493,7 +495,7 @@ void TrackerTest::qSettingsStoreDenialClearsPersistedClientId() {
     config.siteId = 1;
 
     {
-        Tracker tracker(config, &consentStore, &clientIdStore);
+        Tracker tracker(config, consentStore, clientIdStore);
         tracker.setConsentState(ConsentState::Value::Granted);
         QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
         QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
@@ -504,7 +506,7 @@ void TrackerTest::qSettingsStoreDenialClearsPersistedClientId() {
 
     QSettingsConsentStore freshConsentStore(settings);
     QSettingsClientIdStore freshClientIdStore(settings);
-    Tracker freshTracker(config, &freshConsentStore, &freshClientIdStore);
+    Tracker freshTracker(config, freshConsentStore, freshClientIdStore);
 
     QCOMPARE(freshTracker.consentState(), ConsentState::Value::Denied);
     QVERIFY(freshTracker.clientId().isEmpty());

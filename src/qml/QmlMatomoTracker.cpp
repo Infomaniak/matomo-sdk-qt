@@ -37,7 +37,7 @@ MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
     m_settings(
         QCoreApplication::organizationName().isEmpty()
-            ? QStringLiteral("MatomoQtSDK")
+            ? QStringLiteral("MatomoQt")
             : QCoreApplication::organizationName(),
         QCoreApplication::applicationName().isEmpty()
             ? QStringLiteral("MatomoTracker")
@@ -248,7 +248,7 @@ void MatomoTracker::ensureTracker() {
         return;
     }
 
-    m_tracker = new Tracker(m_config, &m_consentStore, &m_clientIdStore, this);
+    m_tracker = new Tracker(m_config, m_consentStore, m_clientIdStore, this);
     m_tracker->setEnabled(m_enabled);
 
     connect(m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);

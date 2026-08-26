@@ -43,6 +43,9 @@ namespace MatomoQt {
  * The Tracker orchestrates privacy checks, request building and network
  * dispatch.  It owns an internal NetworkDispatcher and RequestBuilder.
  *
+ * The consent and client ID stores passed at construction are borrowed
+ * references; they are not copied and must outlive the Tracker.
+ *
  * Tracking calls return RequestResult synchronously to indicate whether the
  * call was accepted or rejected.  The asynchronous network result is reported
  * via the dispatchFinished() signal.
@@ -51,8 +54,8 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         Q_OBJECT
 
     public:
-        explicit Tracker(TrackerConfig config, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent = nullptr);
-        explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent);
+        explicit Tracker(TrackerConfig config, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent = nullptr);
+        explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent);
         ~Tracker() override;
 
         /** Returns the current tracker configuration. */
@@ -118,8 +121,8 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         void onDispatchFinished(const DispatchResult &result);
 
         TrackerConfig m_config;
-        ConsentStore *m_consentStore;
-        ClientIdStore *m_clientIdStore;
+        ConsentStore &m_consentStore;
+        ClientIdStore &m_clientIdStore;
         bool m_enabled = true;
 
         NetworkDispatcher *m_dispatcher;

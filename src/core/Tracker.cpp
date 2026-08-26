@@ -57,11 +57,11 @@ bool isValidClientId(const QString &clientId) {
 
 } // namespace
 
-Tracker::Tracker(TrackerConfig config, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent) :
+Tracker::Tracker(TrackerConfig config, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent) :
     Tracker(std::move(config), nullptr, consentStore, clientIdStore, parent) {
 }
 
-Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore *consentStore, ClientIdStore *clientIdStore, QObject *parent) :
+Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent) :
     QObject(parent),
     m_config(std::move(config)),
     m_consentStore(consentStore),
@@ -73,8 +73,8 @@ Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore 
 
     connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
 
-    if (m_consentStore->consentState() == ConsentState::Value::Denied
-        || m_consentStore->consentState() == ConsentState::Value::Withdrawn) {
+    if (m_consentStore.consentState() == ConsentState::Value::Denied
+        || m_consentStore.consentState() == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
 }
@@ -87,22 +87,22 @@ TrackerConfig Tracker::config() const {
 
 
 ConsentState::Value Tracker::consentState() const {
-    return m_consentStore->consentState();
+    return m_consentStore.consentState();
 }
 
 void Tracker::setConsentState(const ConsentState::Value state) {
-    const auto previousState = m_consentStore->consentState();
+    const auto previousState = m_consentStore.consentState();
     if (previousState == state) {
         return;
     }
 
-    m_consentStore->setConsentState(state);
+    m_consentStore.setConsentState(state);
 
     if (state == ConsentState::Value::Denied || state == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
 
-    if (const auto persistedState = m_consentStore->consentState(); persistedState != previousState) {
+    if (const auto persistedState = m_consentStore.consentState(); persistedState != previousState) {
         emit consentStateChanged(persistedState);
     }
 }
@@ -121,7 +121,7 @@ void Tracker::setEnabled(const bool enabled) {
 }
 
 QString Tracker::clientId() const {
-    return m_clientIdStore->clientId();
+    return m_clientIdStore.clientId();
 }
 
 bool Tracker::setClientId(const QString &clientId) const {
@@ -129,7 +129,7 @@ bool Tracker::setClientId(const QString &clientId) const {
         return false;
     }
 
-    m_clientIdStore->setClientId(clientId);
+    m_clientIdStore.setClientId(clientId);
     return true;
 }
 
@@ -262,7 +262,7 @@ RequestResult Tracker::validateTrackingCall() const {
         return result(RequestStatus::Value::RequestInvalidConfig, QStringLiteral("Tracker endpoint and site ID are required."));
     }
 
-    if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentStore->consentState())) {
+    if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentStore.consentState())) {
         return result(RequestStatus::Value::RequestBlockedByPrivacy, QStringLiteral("Tracking blocked by privacy settings."));
     }
 
@@ -270,20 +270,20 @@ RequestResult Tracker::validateTrackingCall() const {
 }
 
 void Tracker::clearVisitorIdentity() {
-    m_clientIdStore->clearClientId();
+    m_clientIdStore.clearClientId();
     m_currentPageViewId.clear();
     m_lastPageViewPath.clear();
 }
 
 void Tracker::ensureClientId() const {
-    if (m_clientIdStore->clientId().isEmpty()) {
-        m_clientIdStore->setClientId(generateClientId());
+    if (m_clientIdStore.clientId().isEmpty()) {
+        m_clientIdStore.setClientId(generateClientId());
     }
 }
 
 RequestBuildOptions Tracker::buildOptions() const {
     RequestBuildOptions options;
-    options.clientId = m_clientIdStore->clientId();
+    options.clientId = m_clientIdStore.clientId();
     options.userAgent = m_config.userAgent;
     options.language = QLocale().name();
     options.screenResolution = {};

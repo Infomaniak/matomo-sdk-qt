@@ -35,7 +35,7 @@ int main() {
 
     MatomoQt::InMemoryConsentStore consentStore;
     MatomoQt::InMemoryClientIdStore clientIdStore;
-    MatomoQt::Tracker tracker(config, &consentStore, &clientIdStore);
+    MatomoQt::Tracker tracker(config, consentStore, clientIdStore);
     tracker.setConsentState(MatomoQt::ConsentState::Value::Granted);
 
     const auto pageViewResult = tracker.trackPageView({.path = QStringLiteral("preferences")});
