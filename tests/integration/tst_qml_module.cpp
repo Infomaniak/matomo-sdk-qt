@@ -149,7 +149,12 @@ QtObject {
     std::unique_ptr<QObject> root(component.create());
     QVERIFY2(root != nullptr, qPrintable(component.errorString()));
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QObject *tracker = engine.singletonInstance<QObject *>("MatomoQt", "MatomoTracker");
+#else
+    int typeId = qmlTypeId("MatomoQt", 1, 0, "MatomoTracker");
+    QObject *tracker = engine.singletonInstance<QObject *>(typeId);
+#endif
     QVERIFY(tracker != nullptr);
 
     bool acceptedBeforeConsent = false;
