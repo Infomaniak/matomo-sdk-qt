@@ -117,8 +117,9 @@ void MatomoTracker::setEnabled(const bool enabled) {
     m_enabled = enabled;
     if (m_tracker) {
         m_tracker->setEnabled(m_enabled);
+    } else {
+        emit enabledChanged();
     }
-    emit enabledChanged();
 }
 
 ConsentState::Value MatomoTracker::consentState() const {
