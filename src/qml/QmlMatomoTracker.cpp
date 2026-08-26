@@ -63,6 +63,10 @@ QUrl MatomoTracker::actionUrlBase() const {
 }
 
 void MatomoTracker::setActionUrlBase(const QUrl &actionUrlBase) {
+    if (m_tracker) {
+        qWarning("MatomoTracker: actionUrlBase cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
     if (m_config.actionUrlBase == actionUrlBase) {
         return;
     }
@@ -75,6 +79,10 @@ int MatomoTracker::siteId() const {
 }
 
 void MatomoTracker::setSiteId(const int siteId) {
+    if (m_tracker) {
+        qWarning("MatomoTracker: siteId cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
     if (m_config.siteId == siteId) {
         return;
     }
@@ -87,6 +95,10 @@ PrivacyMode::Value MatomoTracker::privacyMode() const {
 }
 
 void MatomoTracker::setPrivacyMode(const PrivacyMode::Value mode) {
+    if (m_tracker) {
+        qWarning("MatomoTracker: privacyMode cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
     if (m_config.privacyMode == mode) {
         return;
     }
