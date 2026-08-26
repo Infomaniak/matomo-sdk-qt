@@ -24,9 +24,8 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QUrl>
-#include <QtCore/QVariant>
+#include <QtQml/qqmlregistration.h>
 #include <QtQml/QQmlEngine>
-#include <QtQmlIntegration/qqmlintegration.h>
 
 namespace MatomoQt::Qml {
 
