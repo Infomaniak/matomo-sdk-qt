@@ -44,6 +44,7 @@ GroupBox {
             ]
             textRole: "label"
             valueRole: "value"
+            currentIndex: MatomoTracker.privacyMode
             onActivated: {
                 MatomoTracker.privacyMode = currentValue
                 logCallback(qsTr("[settings] Privacy mode changed to %1").arg(currentText))
