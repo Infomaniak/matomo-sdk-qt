@@ -128,7 +128,7 @@ jobs:
           retention-days: 14
 
   qml:
-    name: QML module (ubuntu-${{ matrix.ubuntu }}, Qt ${{ matrix.qt }})
+    name: QML module and examples (ubuntu-${{ matrix.ubuntu }}, Qt ${{ matrix.qt }})
     runs-on: *runner-labels
 
     strategy: *qt-strategy
@@ -143,6 +143,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DMATOMOQT_BUILD_QML=ON
           -DMATOMOQT_BUILD_TESTS=ON
+          -DMATOMOQT_BUILD_EXAMPLES=ON
           -DMATOMOQT_WARNINGS_AS_ERRORS=ON
 
       - name: Build
@@ -167,3 +168,8 @@ jobs:
         env:
           QML2_IMPORT_PATH: ${{ runner.temp }}/matomoqt-install/lib/qml
         run: "$RUNNER_TEMP/matomoqt-qml-consumer-build/matomoqt_qml_consumer"
+
+      - name: Smoke-test QML example (headless)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: build/examples/qml-basic/matomoqt-example-qml-basic --exit-on-completed

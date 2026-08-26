@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+#include <QtCore/QCommandLineOption>
+#include <QtCore/QCommandLineParser>
+#include <QtCore/QTimer>
 #include <QtGui/QGuiApplication>
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/qqmlextensionplugin.h>
@@ -28,12 +31,23 @@ Q_IMPORT_QML_PLUGIN(MatomoQtPlugin)
 int main(int argc, char *argv[]) {
     const QGuiApplication app(argc, argv);
 
+    QCommandLineParser parser;
+    parser.setApplicationDescription(QStringLiteral("MatomoQt QML basic example"));
+    const QCommandLineOption exitOnCompletedOption(
+            QStringList() << QStringLiteral("exit-on-completed"));
+    parser.addOption(exitOnCompletedOption);
+    parser.parse(QCoreApplication::arguments());
+
     QQmlApplicationEngine engine;
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
     engine.loadFromModule("MatomoQtExamples.QmlBasic", "Main");
+
+    if (parser.isSet(exitOnCompletedOption)) {
+        QTimer::singleShot(0, &app, &QCoreApplication::quit);
+    }
 
     return QGuiApplication::exec();
 }
