@@ -1,4 +1,3 @@
-
 // Infomaniak - matomo-sdk-qt
 // Copyright (C) 2026 Infomaniak Network SA
 //
@@ -21,8 +20,7 @@ import QtQuick.Layouts
 import MatomoQt
 
 GroupBox {
-    title: qsTr("Settings")
-
+    title: "Settings"
     property var logCallback
 
     ColumnLayout {
@@ -30,7 +28,7 @@ GroupBox {
         spacing: 8
 
         Label {
-            text: qsTr("Privacy mode: %1").arg(privacyModeName(MatomoTracker.privacyMode))
+            text: "Privacy mode: %1".arg(privacyModeName(MatomoTracker.privacyMode))
             font.bold: true
         }
 
@@ -38,44 +36,44 @@ GroupBox {
             id: privacyModeCombo
             Layout.fillWidth: true
             model: [
-                { label: qsTr("Disabled"), value: PrivacyMode.Disabled },
-                { label: qsTr("Requires consent"), value: PrivacyMode.RequiresConsent },
-                { label: qsTr("Consent exempt with opt-out"), value: PrivacyMode.ConsentExemptWithOptOut }
+                { label: "Disabled", value: PrivacyMode.Disabled },
+                { label: "Requires consent", value: PrivacyMode.RequiresConsent },
+                { label: "Consent exempt with opt-out", value: PrivacyMode.ConsentExemptWithOptOut }
             ]
             textRole: "label"
             valueRole: "value"
             currentIndex: MatomoTracker.privacyMode
             onActivated: {
                 MatomoTracker.privacyMode = currentValue
-                logCallback(qsTr("[settings] Privacy mode changed to %1").arg(currentText))
+                logCallback("[settings] Privacy mode changed to %1".arg(currentText))
             }
         }
 
         Button {
-            text: qsTr("Track settings page view")
+            text: "Track settings page view"
             Layout.fillWidth: true
             onClicked: {
-                const accepted = MatomoTracker.trackPageView("/settings", qsTr("Settings"))
-                logCallback(qsTr("[settings] trackPageView(\"/settings\") -> %1").arg(accepted))
+                const accepted = MatomoTracker.trackPageView("/settings", "Settings")
+                logCallback("[settings] trackPageView(\"/settings\") -> %1".arg(accepted))
             }
         }
 
         Button {
-            text: qsTr("Track theme toggle event")
+            text: "Track theme toggle event"
             Layout.fillWidth: true
             onClicked: {
                 const accepted = MatomoTracker.trackEvent("settings", "toggle", "theme", 1)
-                logCallback(qsTr("[settings] trackEvent(\"settings\", \"toggle\", \"theme\") -> %1").arg(accepted))
+                logCallback("[settings] trackEvent(\"settings\", \"toggle\", \"theme\") -> %1".arg(accepted))
             }
         }
     }
 
     function privacyModeName(mode) {
         switch (mode) {
-        case PrivacyMode.Disabled: return qsTr("Disabled")
-        case PrivacyMode.RequiresConsent: return qsTr("Requires consent")
-        case PrivacyMode.ConsentExemptWithOptOut: return qsTr("Consent exempt with opt-out")
-        default: return qsTr("Unknown")
+            case PrivacyMode.Disabled: return "Disabled"
+            case PrivacyMode.RequiresConsent: return "Requires consent"
+            case PrivacyMode.ConsentExemptWithOptOut: return "Consent exempt with opt-out"
+            default: return "Unknown"
         }
     }
 }

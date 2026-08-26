@@ -1,4 +1,3 @@
-
 // Infomaniak - matomo-sdk-qt
 // Copyright (C) 2026 Infomaniak Network SA
 //
@@ -26,7 +25,7 @@ ApplicationWindow {
     width: 480
     height: 640
     visible: true
-    title: qsTr("MatomoQt QML Example")
+    title: "MatomoQt QML Example"
 
     // The tracker is a singleton, configured once here.
     // Every QML file that imports MatomoQt can use MatomoTracker directly.
@@ -42,27 +41,27 @@ ApplicationWindow {
 
         function onLastRequestStatusChanged() {
             appendLog("[tracker] " + requestStatusName(MatomoTracker.lastRequestStatus) +
-                       (MatomoTracker.lastRequestMessage.length > 0 ? (" - " + MatomoTracker.lastRequestMessage) : ""));
+                (MatomoTracker.lastRequestMessage.length > 0 ? (" - " + MatomoTracker.lastRequestMessage) : ""));
         }
     }
 
     function consentStateName(state) {
         switch (state) {
-        case ConsentState.Granted: return qsTr("Granted");
-        case ConsentState.Denied: return qsTr("Denied");
-        case ConsentState.Withdrawn: return qsTr("Withdrawn");
-        default: return qsTr("Unknown");
+            case ConsentState.Granted: return "Granted";
+            case ConsentState.Denied: return "Denied";
+            case ConsentState.Withdrawn: return "Withdrawn";
+            default: return "Unknown";
         }
     }
 
     function requestStatusName(status) {
         switch (status) {
-        case RequestStatus.Accepted: return qsTr("Accepted");
-        case RequestStatus.RequestDisabled: return qsTr("Rejected: tracker disabled");
-        case RequestStatus.RequestBlockedByPrivacy: return qsTr("Rejected: blocked by privacy/consent");
-        case RequestStatus.RequestInvalidConfig: return qsTr("Rejected: invalid tracker configuration");
-        case RequestStatus.RequestInvalidPayload: return qsTr("Rejected: invalid call payload");
-        default: return qsTr("Unknown");
+            case RequestStatus.Accepted: return "Accepted";
+            case RequestStatus.RequestDisabled: return "Rejected: tracker disabled";
+            case RequestStatus.RequestBlockedByPrivacy: return "Rejected: blocked by privacy/consent";
+            case RequestStatus.RequestInvalidConfig: return "Rejected: invalid tracker configuration";
+            case RequestStatus.RequestInvalidPayload: return "Rejected: invalid call payload";
+            default: return "Unknown";
         }
     }
 
@@ -81,87 +80,87 @@ ApplicationWindow {
         spacing: 12
 
         Label {
-            text: qsTr("Consent state: %1").arg(consentStateName(MatomoTracker.consentState))
+            text: "Consent state: %1".arg(consentStateName(MatomoTracker.consentState))
             font.bold: true
         }
 
         Label {
-            text: qsTr("No tracking call is accepted before consent is granted.")
+            text: "No tracking call is accepted before consent is granted."
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
         GroupBox {
-            title: qsTr("Consent")
+            title: "Consent"
             Layout.fillWidth: true
 
             RowLayout {
                 anchors.fill: parent
 
                 Button {
-                    text: qsTr("Grant consent")
+                    text: "Grant consent"
                     onClicked: {
                         MatomoTracker.grantConsent();
-                        appendLog(qsTr("[user] Consent granted."));
+                        appendLog("[user] Consent granted.");
                     }
                 }
 
                 Button {
-                    text: qsTr("Deny consent")
+                    text: "Deny consent"
                     onClicked: {
                         MatomoTracker.denyConsent();
-                        appendLog(qsTr("[user] Consent denied."));
+                        appendLog("[user] Consent denied.");
                     }
                 }
 
                 Button {
-                    text: qsTr("Withdraw consent")
+                    text: "Withdraw consent"
                     onClicked: {
                         MatomoTracker.withdrawConsent();
-                        appendLog(qsTr("[user] Consent withdrawn."));
+                        appendLog("[user] Consent withdrawn.");
                     }
                 }
             }
         }
 
         GroupBox {
-            title: qsTr("Tracking")
+            title: "Tracking"
             Layout.fillWidth: true
 
             RowLayout {
                 anchors.fill: parent
 
                 Button {
-                    text: qsTr("Track page view")
+                    text: "Track page view"
                     onClicked: {
-                        const accepted = MatomoTracker.trackPageView("/settings", qsTr("Settings"));
-                        appendLog(qsTr("[app] trackPageView(\"/settings\") -> %1").arg(accepted));
+                        const accepted = MatomoTracker.trackPageView("/settings", "Settings");
+                        appendLog("[app] trackPageView(\"/settings\") -> %1".arg(accepted));
                     }
                 }
 
                 Button {
-                    text: qsTr("Track event")
+                    text: "Track event"
                     onClicked: {
                         const accepted = MatomoTracker.trackEvent("preferences", "click", "saveButton", 1);
-                        appendLog(qsTr("[app] trackEvent(\"preferences\", \"click\") -> %1").arg(accepted));
+                        appendLog("[app] trackEvent(\"preferences\", \"click\") -> %1".arg(accepted));
                     }
                 }
 
                 Button {
-                    text: qsTr("Send ping")
+                    text: "Send ping"
                     onClicked: {
                         const accepted = MatomoTracker.sendPing();
-                        appendLog(qsTr("[app] sendPing() -> %1").arg(accepted));
+                        appendLog("[app] sendPing() -> %1".arg(accepted));
                     }
                 }
             }
         }
 
         Button {
-            text: qsTr("Reset client ID")
+            text: "Reset client ID"
             onClicked: {
                 MatomoTracker.resetClientId();
-                appendLog(qsTr("[user] Client ID reset."));
+                appendLog("[user] Client ID reset.");
             }
         }
 
@@ -171,7 +170,7 @@ ApplicationWindow {
         }
 
         Label {
-            text: qsTr("Activity log")
+            text: "Activity log"
             font.bold: true
         }
 
