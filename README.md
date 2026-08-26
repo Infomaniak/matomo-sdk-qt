@@ -160,13 +160,13 @@ This builds the tracking URL only.
 ## QML Example
 
 A runnable QML example lives in `examples/qml-basic`. It shows a minimal
-`MatomoTracker` element wired to consent buttons and tracking calls; no
+`MatomoTracker` singleton wired to consent buttons and tracking calls; no
 tracking is sent before the user explicitly grants consent.
 
 ```sh
 cmake -S . -B build -DMATOMOQT_BUILD_QML=ON -DMATOMOQT_BUILD_EXAMPLES=ON
 cmake --build build
-./build/examples/qml-basic/matomoqt-example-qml-basic
+./build/examples/qml-basic/matomoqt_example_qml_basic
 ```
 
 By default the example points at `http://127.0.0.1:8080/matomo.php`; edit
@@ -174,21 +174,33 @@ By default the example points at `http://127.0.0.1:8080/matomo.php`; edit
 (e.g. a local Matomo `docker-compose.yml` for testing,
 or a real server) to see tracked hits.
 
+`MatomoTracker` is exposed as a QML singleton, so you configure and call it
+directly by type name rather than instantiating it. The `PrivacyMode`,
+`ConsentState` and `RequestStatus` enums are exported as QML namespaces.
+
 ```qml
+import QtQuick
+import QtQuick.Controls
 import MatomoQt
 
-MatomoTracker {
-    id: matomo
-    endpoint: "https://matomo.example.com/matomo.php"
-    actionUrlBase: "app://my-app/"
-    siteId: 1
-    privacyMode: Matomo.RequiresConsent
-}
+Button {
+    text: qsTr("Grant consent and track")
 
-// Only after explicit user consent:
-matomo.grantConsent()
-matomo.trackPageView("/settings", "Settings")
-matomo.trackEvent("preferences", "click", "saveButton", 1)
+    Component.onCompleted: {
+        // MatomoTracker is a singleton — configure it directly.
+        MatomoTracker.endpoint = "https://matomo.example.com/matomo.php"
+        MatomoTracker.actionUrlBase = "app://my-app/"
+        MatomoTracker.siteId = 1
+        MatomoTracker.privacyMode = PrivacyMode.RequiresConsent
+    }
+
+    onClicked: {
+        // Only after explicit user consent:
+        MatomoTracker.grantConsent()
+        MatomoTracker.trackPageView("/settings", "Settings")
+        MatomoTracker.trackEvent("preferences", "click", "saveButton", 1)
+    }
+}
 ```
 
 ## Privacy Model
