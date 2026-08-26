@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <QtCore/QCommandLineOption>
 #include <QtCore/QCommandLineParser>
 #include <QtCore/QTimer>
@@ -39,11 +38,23 @@ int main(int argc, char *argv[]) {
     parser.parse(QCoreApplication::arguments());
 
     QQmlApplicationEngine engine;
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
-
     engine.loadFromModule("MatomoQtExamples.QmlBasic", "Main");
+#else
+    QObject::connect(
+        &engine, &QQmlApplicationEngine::objectCreated, &app,
+        [](QObject *obj, const QUrl &) {
+            if (obj == nullptr) {
+                QCoreApplication::exit(-1);
+            }
+        },
+        Qt::QueuedConnection);
+    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/MatomoQtExamples/QmlBasic/Main.qml")));
+#endif
 
     if (parser.isSet(exitOnCompletedOption)) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
