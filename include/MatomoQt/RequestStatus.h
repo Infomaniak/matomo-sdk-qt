@@ -36,20 +36,4 @@ enum class Value {
 };
 Q_ENUM_NS(Value)
 
-[[nodiscard]] inline QString enumToString(Value status) {
-    switch (status) {
-        case Value::RequestAccepted:
-            return QStringLiteral("RequestAccepted");
-        case Value::RequestDisabled:
-            return QStringLiteral("RequestDisabled");
-        case Value::RequestBlockedByPrivacy:
-            return QStringLiteral("RequestBlockedByPrivacy");
-        case Value::RequestInvalidConfig:
-            return QStringLiteral("RequestInvalidConfig");
-        case Value::RequestInvalidPayload:
-            return QStringLiteral("RequestInvalidPayload");
-    }
-    return QStringLiteral("RequestInvalidConfig");
-}
-
 } // namespace MatomoQt::RequestStatus
