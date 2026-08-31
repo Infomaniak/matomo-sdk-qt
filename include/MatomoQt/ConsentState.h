@@ -19,8 +19,7 @@
 
 #include <MatomoQt/Export.h>
 
-#include <QtCore/QString>
-#include <QtCore/qtmetamacros.h>
+#include <QtCore/QMetaObject>
 
 namespace MatomoQt::ConsentState {
 
