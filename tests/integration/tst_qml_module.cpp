@@ -25,6 +25,8 @@
 #include <QtQml/qqmlextensionplugin.h>
 #include <QtTest/QtTest>
 
+#include <MatomoQt/DispatchResult.h>
+
 #include <memory>
 
 Q_IMPORT_QML_PLUGIN(MatomoQtPlugin)
@@ -35,6 +37,11 @@ class TestHttpServer : public QObject {
         Q_OBJECT
 
     public:
+        enum class Mode {
+            Respond200,
+            Respond500,
+        };
+
         explicit TestHttpServer(QObject *parent = nullptr) :
             QObject(parent) {}
 
@@ -64,6 +71,7 @@ class TestHttpServer : public QObject {
 
         [[nodiscard]] int requestCount() const { return m_requestCount; }
         [[nodiscard]] QString lastRequestPath() const { return m_lastRequestPath; }
+        void setMode(Mode mode) { m_mode = mode; }
 
     private:
         void handleConnection() {
@@ -89,16 +97,26 @@ class TestHttpServer : public QObject {
             m_lastRequestPath = requestLine.section(QLatin1Char(' '), 1, 1);
             m_requestCount++;
 
-            socket->write("HTTP/1.1 200 OK\r\n"
-                         "Content-Type: text/plain\r\n"
-                         "Content-Length: 2\r\n"
-                         "Connection: close\r\n"
-                         "\r\n"
-                         "OK");
+            if (m_mode == Mode::Respond200) {
+                socket->write("HTTP/1.1 200 OK\r\n"
+                              "Content-Type: text/plain\r\n"
+                              "Content-Length: 2\r\n"
+                              "Connection: close\r\n"
+                              "\r\n"
+                              "OK");
+            } else {
+                socket->write("HTTP/1.1 500 Internal Server Error\r\n"
+                              "Content-Type: text/plain\r\n"
+                              "Content-Length: 5\r\n"
+                              "Connection: close\r\n"
+                              "\r\n"
+                              "ERROR");
+            }
             socket->disconnectFromHost();
         }
 
         QTcpServer *m_server = nullptr;
+        Mode m_mode = Mode::Respond200;
         int m_requestCount = 0;
         QString m_lastRequestPath;
 };
@@ -132,6 +150,23 @@ import QtQml
 import MatomoQt 1.0
 
 QtObject {
+    id: root
+    property int observedDispatchCount: 0
+    property int observedDispatchStatus: -1
+    property int observedDispatchHttpStatus: -1
+    property string observedDispatchMessage
+    property bool observedDispatchSucceeded: false
+    property Connections trackerConnections: Connections {
+        target: MatomoTracker
+        function onDispatchFinished(status, httpStatus, message) {
+            root.observedDispatchCount++
+            root.observedDispatchStatus = status
+            root.observedDispatchHttpStatus = httpStatus
+            root.observedDispatchMessage = message
+            root.observedDispatchSucceeded = status === DispatchStatus.Success
+        }
+    }
+
     Component.onCompleted: {
         MatomoTracker.endpoint = "%1"
         MatomoTracker.actionUrlBase = "app://qml-module-test/"
@@ -178,11 +213,40 @@ QtObject {
                                       Q_ARG(QVariant, QVariant(1.0))));
     QVERIFY2(acceptedAfterConsent, qPrintable(tracker->property("lastRequestMessage").toString()));
     QTRY_COMPARE_WITH_TIMEOUT(server.requestCount(), 1, 5000);
+    QTRY_COMPARE_WITH_TIMEOUT(root->property("observedDispatchCount").toInt(), 1, 5000);
+    QVERIFY(root->property("observedDispatchSucceeded").toBool());
+    QCOMPARE(root->property("observedDispatchStatus").toInt(),
+             static_cast<int>(MatomoQt::DispatchStatus::Value::Success));
+    QCOMPARE(root->property("observedDispatchHttpStatus").toInt(), 200);
+    QVERIFY(tracker->property("hasDispatchResult").toBool());
+    QCOMPARE(tracker->property("lastDispatchStatus").toInt(),
+             static_cast<int>(MatomoQt::DispatchStatus::Value::Success));
+    QCOMPARE(tracker->property("lastDispatchHttpStatus").toInt(), 200);
 
     const QUrl sentUrl = QUrl(QStringLiteral("http://127.0.0.1%1").arg(server.lastRequestPath()));
     const QUrlQuery sentQuery(sentUrl);
     QCOMPARE(sentQuery.queryItemValue(QStringLiteral("e_c"), QUrl::FullyDecoded), QStringLiteral("preferences"));
     QCOMPARE(sentQuery.queryItemValue(QStringLiteral("e_a"), QUrl::FullyDecoded), QStringLiteral("click"));
+
+    server.setMode(TestHttpServer::Mode::Respond500);
+    QVERIFY(QMetaObject::invokeMethod(tracker,
+                                      "trackEvent",
+                                      Q_RETURN_ARG(bool, acceptedAfterConsent),
+                                      Q_ARG(QString, QStringLiteral("preferences")),
+                                      Q_ARG(QString, QStringLiteral("retry")),
+                                      Q_ARG(QString, QString()),
+                                      Q_ARG(QVariant, QVariant())));
+    QVERIFY(acceptedAfterConsent);
+    QTRY_COMPARE_WITH_TIMEOUT(root->property("observedDispatchCount").toInt(), 2, 5000);
+    QVERIFY(!root->property("observedDispatchSucceeded").toBool());
+    QCOMPARE(root->property("observedDispatchStatus").toInt(),
+             static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
+    QCOMPARE(root->property("observedDispatchHttpStatus").toInt(), 500);
+    QVERIFY(!root->property("observedDispatchMessage").toString().isEmpty());
+    QCOMPARE(tracker->property("lastDispatchStatus").toInt(),
+             static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
+    QCOMPARE(tracker->property("lastDispatchHttpStatus").toInt(), 500);
+    QVERIFY(!tracker->property("lastDispatchMessage").toString().isEmpty());
 }
 
 } // namespace

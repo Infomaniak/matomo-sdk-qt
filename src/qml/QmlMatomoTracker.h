@@ -18,6 +18,8 @@
 #pragma once
 
 #include <MatomoQt/ConsentState.h>
+#include <MatomoQt/DispatchResult.h>
+#include <MatomoQt/DispatchStatus.h>
 #include <MatomoQt/PrivacyMode.h>
 #include <MatomoQt/RequestStatus.h>
 #include <MatomoQt/Tracker.h>
@@ -47,6 +49,12 @@ QML_FOREIGN_NAMESPACE(MatomoQt::RequestStatus)
 QML_NAMED_ELEMENT(RequestStatus)
 } // namespace RequestStatusForeign
 
+namespace DispatchStatusForeign {
+Q_NAMESPACE
+QML_FOREIGN_NAMESPACE(MatomoQt::DispatchStatus)
+QML_NAMED_ELEMENT(DispatchStatus)
+} // namespace DispatchStatusForeign
+
 class MatomoTracker : public QObject {
         Q_OBJECT
         QML_NAMED_ELEMENT(MatomoTracker)
@@ -59,6 +67,10 @@ class MatomoTracker : public QObject {
         Q_PROPERTY(ConsentState::Value consentState READ consentState WRITE setConsentState NOTIFY consentStateChanged)
         Q_PROPERTY(RequestStatus::Value lastRequestStatus READ lastRequestStatus NOTIFY lastRequestStatusChanged)
         Q_PROPERTY(QString lastRequestMessage READ lastRequestMessage NOTIFY lastRequestMessageChanged)
+        Q_PROPERTY(bool hasDispatchResult READ hasDispatchResult NOTIFY hasDispatchResultChanged)
+        Q_PROPERTY(DispatchStatus::Value lastDispatchStatus READ lastDispatchStatus NOTIFY lastDispatchStatusChanged)
+        Q_PROPERTY(int lastDispatchHttpStatus READ lastDispatchHttpStatus NOTIFY lastDispatchHttpStatusChanged)
+        Q_PROPERTY(QString lastDispatchMessage READ lastDispatchMessage NOTIFY lastDispatchMessageChanged)
 
     public:
         explicit MatomoTracker(QObject *parent = nullptr);
@@ -85,6 +97,10 @@ class MatomoTracker : public QObject {
 
         [[nodiscard]] RequestStatus::Value lastRequestStatus() const;
         [[nodiscard]] QString lastRequestMessage() const;
+        [[nodiscard]] bool hasDispatchResult() const;
+        [[nodiscard]] DispatchStatus::Value lastDispatchStatus() const;
+        [[nodiscard]] int lastDispatchHttpStatus() const;
+        [[nodiscard]] QString lastDispatchMessage() const;
 
         Q_INVOKABLE bool trackPageView(const QString &path, const QString &actionName = {});
         Q_INVOKABLE bool trackEvent(const QString &category,
@@ -106,14 +122,22 @@ class MatomoTracker : public QObject {
         void consentStateChanged();
         void lastRequestStatusChanged();
         void lastRequestMessageChanged();
+        void hasDispatchResultChanged();
+        void lastDispatchStatusChanged();
+        void lastDispatchHttpStatusChanged();
+        void lastDispatchMessageChanged();
+        void dispatchFinished(DispatchStatus::Value status, int httpStatus, const QString &message);
 
     private:
         void onTrackerConfigChanged();
         void applyRequestResult(const RequestResult &result);
+        void applyDispatchResult(const DispatchResult &result);
 
         Tracker m_tracker;
         TrackerConfig m_lastConfig;
         RequestResult m_lastRequestResult;
+        DispatchResult m_lastDispatchResult;
+        bool m_hasDispatchResult = false;
 };
 
 } // namespace MatomoQt::Qml

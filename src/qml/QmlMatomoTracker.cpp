@@ -42,6 +42,7 @@ MatomoTracker::MatomoTracker(QObject *parent) :
     connect(&m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState::Value) {
         emit consentStateChanged();
     });
+    connect(&m_tracker, &Tracker::dispatchFinished, this, &MatomoTracker::applyDispatchResult);
 }
 
 QUrl MatomoTracker::endpoint() const {
@@ -120,6 +121,22 @@ QString MatomoTracker::lastRequestMessage() const {
     return m_lastRequestResult.message;
 }
 
+bool MatomoTracker::hasDispatchResult() const {
+    return m_hasDispatchResult;
+}
+
+DispatchStatus::Value MatomoTracker::lastDispatchStatus() const {
+    return m_lastDispatchResult.status;
+}
+
+int MatomoTracker::lastDispatchHttpStatus() const {
+    return m_lastDispatchResult.httpStatus;
+}
+
+QString MatomoTracker::lastDispatchMessage() const {
+    return m_lastDispatchResult.message;
+}
+
 bool MatomoTracker::trackPageView(const QString &path, const QString &actionName) {
     const auto result = m_tracker.trackPageView({
         .path = path,
@@ -189,9 +206,27 @@ void MatomoTracker::onTrackerConfigChanged() {
 }
 
 void MatomoTracker::applyRequestResult(const RequestResult &result) {
+    const bool statusChanged = m_lastRequestResult.status != result.status;
+    const bool messageChanged = m_lastRequestResult.message != result.message;
     m_lastRequestResult = result;
-    emit lastRequestStatusChanged();
-    emit lastRequestMessageChanged();
+    if (statusChanged) emit lastRequestStatusChanged();
+    if (messageChanged) emit lastRequestMessageChanged();
+}
+
+void MatomoTracker::applyDispatchResult(const DispatchResult &result) {
+    const bool firstResult = !m_hasDispatchResult;
+    const bool statusChanged = firstResult || m_lastDispatchResult.status != result.status;
+    const bool httpStatusChanged = firstResult || m_lastDispatchResult.httpStatus != result.httpStatus;
+    const bool messageChanged = firstResult || m_lastDispatchResult.message != result.message;
+
+    m_lastDispatchResult = result;
+    m_hasDispatchResult = true;
+
+    if (firstResult) emit hasDispatchResultChanged();
+    if (statusChanged) emit lastDispatchStatusChanged();
+    if (httpStatusChanged) emit lastDispatchHttpStatusChanged();
+    if (messageChanged) emit lastDispatchMessageChanged();
+    emit dispatchFinished(result.status, result.httpStatus, result.message);
 }
 
 } // namespace MatomoQt::Qml

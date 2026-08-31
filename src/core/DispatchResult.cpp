@@ -20,7 +20,7 @@
 namespace MatomoQt {
 
 bool DispatchResult::success() const {
-    return status == Status::Success;
+    return status == DispatchStatus::Value::Success;
 }
 
 } // namespace MatomoQt

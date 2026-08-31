@@ -29,6 +29,7 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/CustomDimension.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/DispatchResult.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/DispatchStatus.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryClientIdStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryConsentStore.h"

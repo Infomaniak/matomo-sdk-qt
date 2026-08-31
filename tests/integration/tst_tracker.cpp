@@ -209,7 +209,7 @@ void TrackerIntegrationTest::trackPageViewDispatchesToServer() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto dispatchResult = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(dispatchResult.status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchResult.status, DispatchStatus::Value::Success);
 
     QVERIFY(!server.lastRequestPath().isEmpty());
     const auto query = queryFor(server.lastRequestPath());
@@ -236,7 +236,7 @@ void TrackerIntegrationTest::trackEventDispatchesToServer() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto dispatchResult = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(dispatchResult.status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchResult.status, DispatchStatus::Value::Success);
 
     const auto query = queryFor(server.lastRequestPath());
     QCOMPARE(queryValue(query, QStringLiteral("e_c")), QStringLiteral("preferences"));
@@ -259,7 +259,7 @@ void TrackerIntegrationTest::sendPingDispatchesToServer() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto dispatchResult = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(dispatchResult.status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchResult.status, DispatchStatus::Value::Success);
 
     const auto query = queryFor(server.lastRequestPath());
     QVERIFY(hasQueryItem(query, QStringLiteral("ping")));
@@ -568,7 +568,7 @@ void TrackerIntegrationTest::dispatchFinishedSignalEmitted() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto result = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::Success);
+    QCOMPARE(result.status, DispatchStatus::Value::Success);
     QCOMPARE(result.httpStatus, 200);
     QVERIFY(result.success());
 }
@@ -605,7 +605,7 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("open-breaker")});
     QVERIFY(dispatchSpy.wait(5000));
-    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchResult::Status::NetworkError);
+    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchStatus::Value::NetworkError);
     QCOMPARE(server.requestCount(), 1);
     QCOMPARE(tracker.stats().sentCount, 1);
 
@@ -615,7 +615,7 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     QVERIFY(blockedResult.accepted());
     QCOMPARE(dispatchSpy.count(), 1);
     QCOMPARE(dispatchSpy.constFirst().constFirst().value<DispatchResult>().status,
-             DispatchResult::Status::CircuitBreakerOpen);
+             DispatchStatus::Value::CircuitBreakerOpen);
     QCOMPARE(server.requestCount(), 1);
     QCOMPARE(tracker.stats().sentCount, 1);
 
@@ -624,7 +624,7 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     dispatchSpy.clear();
     (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("after-reset")});
     QVERIFY(dispatchSpy.wait(5000));
-    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchStatus::Value::Success);
 
     const auto query = queryFor(server.lastRequestPath());
     QCOMPARE(queryValue(query, QStringLiteral("new_visit")), QStringLiteral("1"));
