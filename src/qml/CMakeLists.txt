@@ -13,6 +13,7 @@ qt_add_qml_module(MatomoQtQml
         QmlMatomoTracker.h
         QmlMatomoTracker.cpp
 )
+add_library(MatomoQt::QmlPlugin ALIAS MatomoQtQmlPlugin)
 
 # qt_add_qml_module() generates internal object-library targets (e.g.
 # MatomoQtQml_resources_1, MatomoQtQmlPlugin_init) and links them INTERFACE
@@ -34,6 +35,7 @@ foreach(_t IN LISTS matomoqt_qml_internal_targets)
 endforeach()
 
 set_target_properties(MatomoQtQmlPlugin PROPERTIES
+    EXPORT_NAME QmlPlugin
     LIBRARY_OUTPUT_DIRECTORY "$<TARGET_PROPERTY:MatomoQtQml,QT_QML_MODULE_OUTPUT_DIRECTORY>"
     RUNTIME_OUTPUT_DIRECTORY "$<TARGET_PROPERTY:MatomoQtQml,QT_QML_MODULE_OUTPUT_DIRECTORY>"
     ARCHIVE_OUTPUT_DIRECTORY "$<TARGET_PROPERTY:MatomoQtQml,QT_QML_MODULE_OUTPUT_DIRECTORY>"

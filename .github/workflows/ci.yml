@@ -150,3 +150,20 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Install QML module
+        run: cmake --install build --prefix "$RUNNER_TEMP/matomoqt-install"
+
+      - name: Configure downstream QML consumer
+        run: >
+          cmake -S tests/consumer -B "$RUNNER_TEMP/matomoqt-qml-consumer-build"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install"
+
+      - name: Build downstream QML consumer
+        run: cmake --build "$RUNNER_TEMP/matomoqt-qml-consumer-build" --parallel
+
+      - name: Run downstream QML consumer
+        env:
+          QML2_IMPORT_PATH: ${{ runner.temp }}/matomoqt-install/lib/qml
+        run: "$RUNNER_TEMP/matomoqt-qml-consumer-build/matomoqt_qml_consumer"
