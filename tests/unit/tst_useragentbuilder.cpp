@@ -1,6 +1,26 @@
+/*
+ * Infomaniak - matomo-sdk-qt
+ * Copyright (C) 2026 Infomaniak Network SA
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <MatomoQt/RequestBuilder.h>
 #include <MatomoQt/UserAgentBuilder.h>
 
+#include "UserAgentBuilder_p.h"
+
+#include <QtCore/QBuffer>
 #include <QtCore/QUrlQuery>
 #include <QtTest/QtTest>
 
@@ -20,6 +40,11 @@ class UserAgentBuilderTest : public QObject {
         static void buildsLinuxX64UserAgent();
         static void buildsLinuxArm64UserAgent();
         static void buildsLinuxUnknownArchUserAgent();
+        static void buildsLinuxX64WithDistro();
+        static void buildsLinuxArm64WithDistro();
+        static void buildsLinuxUnknownArchWithDistro();
+        static void buildsLinuxX64WithMultiWordDistro();
+        static void buildsLinuxX64WithEmptyDistroFallsBack();
         static void trimsWindowsNtVersionToMajorMinor();
         static void buildsMinimalUnknownOsUserAgent();
         static void normalizesProductToken();
@@ -27,6 +52,7 @@ class UserAgentBuilderTest : public QObject {
         static void mapsQtCpuArchitecture_data();
         static void mapsQtCpuArchitecture();
         static void currentDesktopInfoIncludesApplicationAndQtVersion();
+        static void parsesEscapedLinuxDistroName();
         static void requestBuilderSendsBuiltUserAgent();
 };
 
@@ -128,6 +154,71 @@ void UserAgentBuilderTest::buildsLinuxUnknownArchUserAgent() {
     QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux) kDrive/4.0.1 Qt/6.11.1"));
 }
 
+void UserAgentBuilderTest::buildsLinuxX64WithDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux x86_64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxArm64WithDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::Arm64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux aarch64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxUnknownArchWithDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::Unknown,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxX64WithMultiWordDistro() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("Linux Mint"),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux Mint; Linux x86_64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
+void UserAgentBuilderTest::buildsLinuxX64WithEmptyDistroFallsBack() {
+    const auto userAgent = UserAgentBuilder::buildDesktopUserAgent({
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.1"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.11.1"),
+            .linuxDistro = QStringLiteral("  "),
+    });
+
+    QCOMPARE(userAgent, QStringLiteral("Mozilla/5.0 (X11; Linux x86_64) kDrive/4.0.1 Qt/6.11.1"));
+}
+
 void UserAgentBuilderTest::trimsWindowsNtVersionToMajorMinor() {
     // QOperatingSystemVersion exposes the Windows build number as the micro component, but real
     // UAs (and DeviceDetector's NT-version map) only expect "Windows NT <major>.<minor>".
@@ -208,6 +299,14 @@ void UserAgentBuilderTest::currentDesktopInfoIncludesApplicationAndQtVersion() {
     QCOMPARE(info.productName, QStringLiteral("kDrive"));
     QCOMPARE(info.productVersion, QStringLiteral("4.0.1"));
     QCOMPARE(info.qtVersion, QStringLiteral(QT_VERSION_STR));
+}
+
+void UserAgentBuilderTest::parsesEscapedLinuxDistroName() {
+    QBuffer osRelease;
+    osRelease.setData("ID=example\nNAME=\"Example \\\"Linux\\\" \\\\ Edition\"\n");
+    QVERIFY(osRelease.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    QCOMPARE(Internal::linuxDistroFromOsRelease(osRelease), QStringLiteral("Example \"Linux\" \\ Edition"));
 }
 
 void UserAgentBuilderTest::requestBuilderSendsBuiltUserAgent() {

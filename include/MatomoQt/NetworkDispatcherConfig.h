@@ -17,27 +17,19 @@
 
 #pragma once
 
-#include <QtCore/QString>
+#include <MatomoQt/Export.h>
 
 namespace MatomoQt {
 
-/** Privacy gate applied before any tracking request may be built. */
-enum class PrivacyMode {
-    Disabled,
-    RequiresConsent,
-    ConsentExemptWithOptOut,
-};
+/** Configuration for the network dispatcher. */
+struct MATOMOQT_CORE_EXPORT NetworkDispatcherConfig {
+        /** Per-request timeout in milliseconds. 0 disables the timeout. */
+        int timeoutMs = 10000;
 
-[[nodiscard]] inline QString enumToString(PrivacyMode mode) {
-    switch (mode) {
-        case PrivacyMode::Disabled:
-            return QStringLiteral("Disabled");
-        case PrivacyMode::RequiresConsent:
-            return QStringLiteral("RequiresConsent");
-        case PrivacyMode::ConsentExemptWithOptOut:
-            return QStringLiteral("ConsentExemptWithOptOut");
-    }
-    return QStringLiteral("Disabled");
-}
+        /** Number of consecutive failures before the circuit breaker opens. 0 disables the circuit breaker. */
+        int maxConsecutiveFailures = 5;
+
+        [[nodiscard]] bool operator==(const NetworkDispatcherConfig &other) const = default;
+};
 
 } // namespace MatomoQt

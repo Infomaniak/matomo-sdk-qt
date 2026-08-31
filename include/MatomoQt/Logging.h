@@ -17,27 +17,20 @@
 
 #pragma once
 
-#include <QtCore/QString>
+#include <MatomoQt/Export.h>
+
+#include <QtCore/QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(matomoSdk)
 
 namespace MatomoQt {
 
-/** Privacy gate applied before any tracking request may be built. */
-enum class PrivacyMode {
-    Disabled,
-    RequiresConsent,
-    ConsentExemptWithOptOut,
-};
-
-[[nodiscard]] inline QString enumToString(PrivacyMode mode) {
-    switch (mode) {
-        case PrivacyMode::Disabled:
-            return QStringLiteral("Disabled");
-        case PrivacyMode::RequiresConsent:
-            return QStringLiteral("RequiresConsent");
-        case PrivacyMode::ConsentExemptWithOptOut:
-            return QStringLiteral("ConsentExemptWithOptOut");
-    }
-    return QStringLiteral("Disabled");
-}
+/**
+ * SDK-wide logging category.
+ *
+ * Use this category for all SDK diagnostic messages.  Full tracking URLs and
+ * query parameters must never be logged.
+ */
+MATOMOQT_CORE_EXPORT const QLoggingCategory &matomoSdkCategory();
 
 } // namespace MatomoQt
