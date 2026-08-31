@@ -128,7 +128,7 @@ TrackerConfig validConfig(const QUrl &endpoint) {
     config.endpoint = endpoint;
     config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
-    config.privacyMode = PrivacyMode::ConsentExemptWithOptOut;
+    config.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
     return config;
 }
 
@@ -199,7 +199,7 @@ void TrackerIntegrationTest::trackPageViewDispatchesToServer() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     const auto result = tracker.trackPageView({.path = QStringLiteral("settings"), .actionName = QStringLiteral("Settings")});
@@ -209,7 +209,7 @@ void TrackerIntegrationTest::trackPageViewDispatchesToServer() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto dispatchResult = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(dispatchResult.status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchResult.status, DispatchStatus::Value::Success);
 
     QVERIFY(!server.lastRequestPath().isEmpty());
     const auto query = queryFor(server.lastRequestPath());
@@ -222,7 +222,7 @@ void TrackerIntegrationTest::trackEventDispatchesToServer() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     const auto result = tracker.trackEvent({
@@ -236,7 +236,7 @@ void TrackerIntegrationTest::trackEventDispatchesToServer() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto dispatchResult = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(dispatchResult.status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchResult.status, DispatchStatus::Value::Success);
 
     const auto query = queryFor(server.lastRequestPath());
     QCOMPARE(queryValue(query, QStringLiteral("e_c")), QStringLiteral("preferences"));
@@ -249,7 +249,7 @@ void TrackerIntegrationTest::sendPingDispatchesToServer() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     const auto result = tracker.sendPing();
@@ -259,7 +259,7 @@ void TrackerIntegrationTest::sendPingDispatchesToServer() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto dispatchResult = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(dispatchResult.status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchResult.status, DispatchStatus::Value::Success);
 
     const auto query = queryFor(server.lastRequestPath());
     QVERIFY(hasQueryItem(query, QStringLiteral("ping")));
@@ -270,7 +270,7 @@ void TrackerIntegrationTest::pingCarriesLastPageViewPath() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("settings")});
@@ -295,7 +295,7 @@ void TrackerIntegrationTest::pingWithoutPageViewFallsBackToBase() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     const auto res = tracker.sendPing();
@@ -313,7 +313,7 @@ void TrackerIntegrationTest::blockedByPrivacyDoesNotReachDispatcher() {
     QVERIFY(server.start());
 
     TrackerConfig config = validConfig(server.url());
-    config.privacyMode = PrivacyMode::RequiresConsent;
+    config.privacyMode = PrivacyMode::Value::RequiresConsent;
 
     Tracker tracker(config);
 
@@ -322,7 +322,7 @@ void TrackerIntegrationTest::blockedByPrivacyDoesNotReachDispatcher() {
     const auto result = tracker.trackPageView({.path = QStringLiteral("settings")});
 
     QVERIFY(!result.accepted());
-    QCOMPARE(result.status, RequestResult::Status::BlockedByPrivacy);
+    QCOMPARE(result.status, RequestStatus::Value::RequestBlockedByPrivacy);
 
     QCOMPARE(dispatchSpy.count(), 0);
     QCOMPARE(server.requestCount(), 0);
@@ -338,14 +338,14 @@ void TrackerIntegrationTest::disabledTrackerDoesNotDispatch() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setEnabled(false);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     const auto result = tracker.trackPageView({.path = QStringLiteral("settings")});
 
     QVERIFY(!result.accepted());
-    QCOMPARE(result.status, RequestResult::Status::Disabled);
+    QCOMPARE(result.status, RequestStatus::Value::RequestDisabled);
 
     QCOMPARE(dispatchSpy.count(), 0);
     QCOMPARE(server.requestCount(), 0);
@@ -359,7 +359,7 @@ void TrackerIntegrationTest::pageViewIdIsPresentOnPageView() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("page1")});
@@ -377,7 +377,7 @@ void TrackerIntegrationTest::pageViewIdIsReusedOnEvent() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("page1")});
@@ -401,10 +401,10 @@ void TrackerIntegrationTest::pageViewIdClearedAfterConsentDenial() {
     QVERIFY(server.start());
 
     TrackerConfig config = validConfig(server.url());
-    config.privacyMode = PrivacyMode::RequiresConsent;
+    config.privacyMode = PrivacyMode::Value::RequiresConsent;
 
     Tracker tracker(config);
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("page1")});
@@ -414,8 +414,8 @@ void TrackerIntegrationTest::pageViewIdClearedAfterConsentDenial() {
     const QString pageViewPvId = queryValue(pvQuery, QStringLiteral("pv_id"));
     QVERIFY(!pageViewPvId.isEmpty());
 
-    tracker.setConsentState(ConsentState::Denied);
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Denied);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     dispatchSpy.clear();
     (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("act")});
@@ -430,7 +430,7 @@ void TrackerIntegrationTest::forceNewVisitAddsNewVisitParam() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     tracker.forceNewVisit();
@@ -454,7 +454,7 @@ void TrackerIntegrationTest::customDimensionAppearsInRequest() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setCustomDimension(3, QStringLiteral("beta"));
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -471,7 +471,7 @@ void TrackerIntegrationTest::clearCustomDimensionRemovesFromRequest() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setCustomDimension(3, QStringLiteral("beta"));
     tracker.clearCustomDimension(3);
 
@@ -489,7 +489,7 @@ void TrackerIntegrationTest::pingDoesNotCarryCustomDimensions() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setCustomDimension(3, QStringLiteral("beta"));
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
@@ -507,10 +507,10 @@ void TrackerIntegrationTest::runtimeStatsAreAccurate() {
     QVERIFY(server.start());
 
     TrackerConfig config = validConfig(server.url());
-    config.privacyMode = PrivacyMode::RequiresConsent;
+    config.privacyMode = PrivacyMode::Value::RequiresConsent;
 
     Tracker tracker(config);
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     (void) tracker.trackPageView({.path = QStringLiteral("page1")});
     (void) tracker.trackPageView({.path = QStringLiteral("page2")});
@@ -518,7 +518,7 @@ void TrackerIntegrationTest::runtimeStatsAreAccurate() {
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     QVERIFY(dispatchSpy.wait(5000));
 
-    tracker.setConsentState(ConsentState::Denied);
+    tracker.setConsentState(ConsentState::Value::Denied);
     (void) tracker.trackPageView({.path = QStringLiteral("blocked")});
 
     QTRY_COMPARE_WITH_TIMEOUT(dispatchSpy.count(), 2, 5000);
@@ -534,7 +534,7 @@ void TrackerIntegrationTest::clientIdIsAutoGenerated() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QVERIFY(tracker.clientId().isEmpty());
 
@@ -559,7 +559,7 @@ void TrackerIntegrationTest::dispatchFinishedSignalEmitted() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("act")});
@@ -568,7 +568,7 @@ void TrackerIntegrationTest::dispatchFinishedSignalEmitted() {
     QCOMPARE(dispatchSpy.count(), 1);
 
     const auto result = dispatchSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::Success);
+    QCOMPARE(result.status, DispatchStatus::Value::Success);
     QCOMPARE(result.httpStatus, 200);
     QVERIFY(result.success());
 }
@@ -578,7 +578,7 @@ void TrackerIntegrationTest::failedCountIncrementedOnFailure() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackPageView({.path = QStringLiteral("settings")});
@@ -599,13 +599,13 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     QVERIFY(server.start());
 
     Tracker tracker(validConfig(server.url()));
-    tracker.setConsentState(ConsentState::Granted);
+    tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setNetworkDispatcherConfig({.timeoutMs = 1000, .maxConsecutiveFailures = 1});
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("open-breaker")});
     QVERIFY(dispatchSpy.wait(5000));
-    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchResult::Status::NetworkError);
+    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchStatus::Value::NetworkError);
     QCOMPARE(server.requestCount(), 1);
     QCOMPARE(tracker.stats().sentCount, 1);
 
@@ -615,7 +615,7 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     QVERIFY(blockedResult.accepted());
     QCOMPARE(dispatchSpy.count(), 1);
     QCOMPARE(dispatchSpy.constFirst().constFirst().value<DispatchResult>().status,
-             DispatchResult::Status::CircuitBreakerOpen);
+             DispatchStatus::Value::CircuitBreakerOpen);
     QCOMPARE(server.requestCount(), 1);
     QCOMPARE(tracker.stats().sentCount, 1);
 
@@ -624,7 +624,7 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     dispatchSpy.clear();
     (void) tracker.trackEvent({.category = QStringLiteral("cat"), .action = QStringLiteral("after-reset")});
     QVERIFY(dispatchSpy.wait(5000));
-    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchResult::Status::Success);
+    QCOMPARE(dispatchSpy.constLast().constFirst().value<DispatchResult>().status, DispatchStatus::Value::Success);
 
     const auto query = queryFor(server.lastRequestPath());
     QCOMPARE(queryValue(query, QStringLiteral("new_visit")), QStringLiteral("1"));

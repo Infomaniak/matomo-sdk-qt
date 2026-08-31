@@ -22,28 +22,34 @@
 #include <QtCore/QString>
 #include <QtCore/qtmetamacros.h>
 
-namespace MatomoQt::PrivacyMode {
+namespace MatomoQt::DispatchStatus {
 
 Q_NAMESPACE_EXPORT(MATOMOQT_CORE_EXPORT)
 
-/** Privacy gate applied before any tracking request may be built. */
+/** Result of dispatching a tracking request over the network. */
 enum class Value {
-    Disabled,
-    RequiresConsent,
-    ConsentExemptWithOptOut,
+    Success,
+    Timeout,
+    NetworkError,
+    SslError,
+    CircuitBreakerOpen,
 };
 Q_ENUM_NS(Value)
 
-[[nodiscard]] inline QString enumToString(Value mode) {
-    switch (mode) {
-        case Value::Disabled:
-            return QStringLiteral("Disabled");
-        case Value::RequiresConsent:
-            return QStringLiteral("RequiresConsent");
-        case Value::ConsentExemptWithOptOut:
-            return QStringLiteral("ConsentExemptWithOptOut");
+[[nodiscard]] inline QString enumToString(Value status) {
+    switch (status) {
+        case Value::Success:
+            return QStringLiteral("Success");
+        case Value::Timeout:
+            return QStringLiteral("Timeout");
+        case Value::NetworkError:
+            return QStringLiteral("NetworkError");
+        case Value::SslError:
+            return QStringLiteral("SslError");
+        case Value::CircuitBreakerOpen:
+            return QStringLiteral("CircuitBreakerOpen");
     }
-    return QStringLiteral("Disabled");
+    return QStringLiteral("NetworkError");
 }
 
-} // namespace MatomoQt::PrivacyMode
+} // namespace MatomoQt::DispatchStatus

@@ -16,6 +16,7 @@
  */
 
 #include <MatomoQt/RequestBuilder.h>
+#include <MatomoQt/RequestStatus.h>
 
 #include <QtCore/QLocale>
 #include <QtCore/QRegularExpression>
@@ -29,16 +30,16 @@ namespace MatomoQt {
 
 namespace {
 
-RequestBuildResult failure(RequestResult::Status status, QString message) {
+RequestBuildResult failure(RequestStatus::Value status, QString message) {
     return RequestBuildResult{RequestResult{status, std::move(message)}, {}};
 }
 
 RequestBuildResult invalidConfig(QString message) {
-    return failure(RequestResult::Status::InvalidConfig, std::move(message));
+    return failure(RequestStatus::Value::RequestInvalidConfig, std::move(message));
 }
 
 RequestBuildResult invalidPayload(QString message) {
-    return failure(RequestResult::Status::InvalidPayload, std::move(message));
+    return failure(RequestStatus::Value::RequestInvalidPayload, std::move(message));
 }
 
 bool hasValidActionUrlBase(const QUrl &url) {
@@ -135,7 +136,7 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionU
     // QUrlQuery leaves literal '+' unencoded, but Matomo (PHP) decodes '+' as a space in query
     // values, corrupting values like "C++" or exponent-formatted event values (e.g. 1e+20).
     url.setQuery(query.toString(QUrl::FullyEncoded).replace(QLatin1Char('+'), QLatin1String("%2B")), QUrl::StrictMode);
-    return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, TrackingRequest{url}};
+    return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, TrackingRequest{url}};
 }
 
 } // namespace
@@ -170,7 +171,7 @@ RequestBuildResult RequestBuilder::buildPageView(const PageView &pageView, const
             return invalidPayload(std::move(errorMessage));
         }
 
-        return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, {}};
+        return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });
 }
 
@@ -196,7 +197,7 @@ RequestBuildResult RequestBuilder::buildEvent(const Event &event, const RequestB
             return invalidPayload(std::move(errorMessage));
         }
 
-        return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, {}};
+        return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });
 }
 
@@ -212,7 +213,7 @@ RequestBuildResult RequestBuilder::buildPing(const QString &path, const RequestB
 
     return buildRequest(m_config, m_config.actionUrlBase.resolved(actionReference), options, [](QUrlQuery *query) {
         query->addQueryItem(QStringLiteral("ping"), QStringLiteral("1"));
-        return RequestBuildResult{RequestResult{RequestResult::Status::Accepted, {}}, {}};
+        return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });
 }
 

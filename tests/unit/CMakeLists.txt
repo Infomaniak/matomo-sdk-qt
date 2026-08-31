@@ -77,6 +77,7 @@ set(matomoqt_public_headers
     ConsentStore
     CustomDimension
     DispatchResult
+    DispatchStatus
     Event
     InMemoryClientIdStore
     InMemoryConsentStore
@@ -92,6 +93,7 @@ set(matomoqt_public_headers
     RequestBuildOptions
     RequestBuildResult
     RequestResult
+    RequestStatus
     Tracker
     TrackerConfig
     TrackerStats

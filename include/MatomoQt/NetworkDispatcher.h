@@ -108,7 +108,7 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
         void handleReplyFinished(QNetworkReply *reply);
         void handleTimeout(QNetworkReply *reply);
         void recordSuccess();
-        void recordFailure(DispatchResult::Status status, const QString &message, int httpStatus = 0);
+        void recordFailure(DispatchStatus::Value status, const QString &message, int httpStatus = 0);
         void setOpen(bool open);
         void cleanupReply(QNetworkReply *reply);
 

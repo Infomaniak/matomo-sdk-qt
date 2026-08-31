@@ -20,7 +20,7 @@
 namespace MatomoQt {
 
 bool RequestResult::accepted() const {
-    return status == Status::Accepted;
+    return status == RequestStatus::Value::RequestAccepted;
 }
 
 } // namespace MatomoQt

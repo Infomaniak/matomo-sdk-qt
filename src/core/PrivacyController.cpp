@@ -19,15 +19,15 @@
 
 namespace MatomoQt {
 
-bool PrivacyController::isTrackingAllowed(const PrivacyMode mode, const ConsentState state) {
+bool PrivacyController::isTrackingAllowed(const PrivacyMode::Value mode, const ConsentState::Value state) {
     switch (mode) {
-        using enum PrivacyMode;
+        using enum PrivacyMode::Value;
         case Disabled:
             return false;
         case RequiresConsent:
-            return state == ConsentState::Granted;
+            return state == ConsentState::Value::Granted;
         case ConsentExemptWithOptOut:
-            return state != ConsentState::Denied && state != ConsentState::Withdrawn;
+            return state != ConsentState::Value::Denied && state != ConsentState::Value::Withdrawn;
     }
     return false;
 }

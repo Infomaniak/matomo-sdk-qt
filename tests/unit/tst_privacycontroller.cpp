@@ -37,52 +37,52 @@ class PrivacyControllerTest : public QObject {
 } // namespace
 
 void PrivacyControllerTest::defaultRequiresConsentBlocks() {
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::RequiresConsent, ConsentState::Unknown));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::RequiresConsent, ConsentState::Value::Unknown));
 }
 
 void PrivacyControllerTest::disabledAlwaysBlocks() {
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Disabled, ConsentState::Unknown));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Disabled, ConsentState::Granted));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Disabled, ConsentState::Denied));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Disabled, ConsentState::Withdrawn));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::Disabled, ConsentState::Value::Unknown));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::Disabled, ConsentState::Value::Granted));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::Disabled, ConsentState::Value::Denied));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::Disabled, ConsentState::Value::Withdrawn));
 }
 
 void PrivacyControllerTest::requiresConsentMatrix() {
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::RequiresConsent, ConsentState::Unknown));
-    QVERIFY(PrivacyController::isTrackingAllowed(PrivacyMode::RequiresConsent, ConsentState::Granted));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::RequiresConsent, ConsentState::Denied));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::RequiresConsent, ConsentState::Withdrawn));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::RequiresConsent, ConsentState::Value::Unknown));
+    QVERIFY(PrivacyController::isTrackingAllowed(PrivacyMode::Value::RequiresConsent, ConsentState::Value::Granted));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::RequiresConsent, ConsentState::Value::Denied));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::RequiresConsent, ConsentState::Value::Withdrawn));
 }
 
 void PrivacyControllerTest::exemptMatrix() {
-    QVERIFY(PrivacyController::isTrackingAllowed(PrivacyMode::ConsentExemptWithOptOut, ConsentState::Unknown));
-    QVERIFY(PrivacyController::isTrackingAllowed(PrivacyMode::ConsentExemptWithOptOut, ConsentState::Granted));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::ConsentExemptWithOptOut, ConsentState::Denied));
-    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::ConsentExemptWithOptOut, ConsentState::Withdrawn));
+    QVERIFY(PrivacyController::isTrackingAllowed(PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Unknown));
+    QVERIFY(PrivacyController::isTrackingAllowed(PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Granted));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Denied));
+    QVERIFY(!PrivacyController::isTrackingAllowed(PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Withdrawn));
 }
 
 void PrivacyControllerTest::fullExhaustiveMatrix() {
     struct Case {
-        PrivacyMode mode;
-        ConsentState state;
+        PrivacyMode::Value mode;
+        ConsentState::Value state;
         bool expected;
     };
 
     const std::vector<Case> cases = {
-        {PrivacyMode::Disabled, ConsentState::Unknown, false},
-        {PrivacyMode::Disabled, ConsentState::Granted, false},
-        {PrivacyMode::Disabled, ConsentState::Denied, false},
-        {PrivacyMode::Disabled, ConsentState::Withdrawn, false},
+        {PrivacyMode::Value::Disabled, ConsentState::Value::Unknown, false},
+        {PrivacyMode::Value::Disabled, ConsentState::Value::Granted, false},
+        {PrivacyMode::Value::Disabled, ConsentState::Value::Denied, false},
+        {PrivacyMode::Value::Disabled, ConsentState::Value::Withdrawn, false},
 
-        {PrivacyMode::RequiresConsent, ConsentState::Unknown, false},
-        {PrivacyMode::RequiresConsent, ConsentState::Granted, true},
-        {PrivacyMode::RequiresConsent, ConsentState::Denied, false},
-        {PrivacyMode::RequiresConsent, ConsentState::Withdrawn, false},
+        {PrivacyMode::Value::RequiresConsent, ConsentState::Value::Unknown, false},
+        {PrivacyMode::Value::RequiresConsent, ConsentState::Value::Granted, true},
+        {PrivacyMode::Value::RequiresConsent, ConsentState::Value::Denied, false},
+        {PrivacyMode::Value::RequiresConsent, ConsentState::Value::Withdrawn, false},
 
-        {PrivacyMode::ConsentExemptWithOptOut, ConsentState::Unknown, true},
-        {PrivacyMode::ConsentExemptWithOptOut, ConsentState::Granted, true},
-        {PrivacyMode::ConsentExemptWithOptOut, ConsentState::Denied, false},
-        {PrivacyMode::ConsentExemptWithOptOut, ConsentState::Withdrawn, false},
+        {PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Unknown, true},
+        {PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Granted, true},
+        {PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Denied, false},
+        {PrivacyMode::Value::ConsentExemptWithOptOut, ConsentState::Value::Withdrawn, false},
     };
 
     for (const auto &c : cases) {

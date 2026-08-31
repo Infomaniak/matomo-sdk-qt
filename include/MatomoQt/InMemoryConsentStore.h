@@ -33,11 +33,11 @@ class MATOMOQT_CORE_EXPORT InMemoryConsentStore : public ConsentStore {
     public:
         InMemoryConsentStore() = default;
 
-        [[nodiscard]] ConsentState consentState() const override;
-        void setConsentState(ConsentState state) override;
+        [[nodiscard]] ConsentState::Value consentState() const override;
+        void setConsentState(ConsentState::Value state) override;
 
     private:
-        ConsentState m_state = ConsentState::Unknown;
+        ConsentState::Value m_state = ConsentState::Value::Unknown;
 };
 
 } // namespace MatomoQt

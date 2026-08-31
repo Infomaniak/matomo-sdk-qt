@@ -61,19 +61,19 @@ class StoresTest : public QObject {
 
 void StoresTest::inMemoryConsentStoreDefaultsToUnknown() {
     MatomoQt::InMemoryConsentStore store;
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Unknown);
 }
 
 void StoresTest::inMemoryConsentStoreRetainsValue() {
     MatomoQt::InMemoryConsentStore store;
-    store.setConsentState(MatomoQt::ConsentState::Granted);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Granted);
+    store.setConsentState(MatomoQt::ConsentState::Value::Granted);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Granted);
 
-    store.setConsentState(MatomoQt::ConsentState::Denied);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Denied);
+    store.setConsentState(MatomoQt::ConsentState::Value::Denied);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Denied);
 
-    store.setConsentState(MatomoQt::ConsentState::Withdrawn);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Withdrawn);
+    store.setConsentState(MatomoQt::ConsentState::Value::Withdrawn);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Withdrawn);
 }
 
 void StoresTest::inMemoryClientIdStoreDefaultsToEmpty() {
@@ -98,15 +98,15 @@ void StoresTest::qSettingsConsentStorePersistsState() {
     auto settings = createTempQSettings(this);
     MatomoQt::QSettingsConsentStore store(settings);
 
-    store.setConsentState(MatomoQt::ConsentState::Granted);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Granted);
+    store.setConsentState(MatomoQt::ConsentState::Value::Granted);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Granted);
 
     // Simulate a fresh store reading the same settings
     MatomoQt::QSettingsConsentStore freshStore(settings);
-    QCOMPARE(freshStore.consentState(), MatomoQt::ConsentState::Granted);
+    QCOMPARE(freshStore.consentState(), MatomoQt::ConsentState::Value::Granted);
 
-    store.setConsentState(MatomoQt::ConsentState::Denied);
-    QCOMPARE(freshStore.consentState(), MatomoQt::ConsentState::Denied);
+    store.setConsentState(MatomoQt::ConsentState::Value::Denied);
+    QCOMPARE(freshStore.consentState(), MatomoQt::ConsentState::Value::Denied);
 }
 
 void StoresTest::qSettingsConsentStoreInvalidValueReturnsUnknown() {
@@ -114,34 +114,34 @@ void StoresTest::qSettingsConsentStoreInvalidValueReturnsUnknown() {
     settings->setValue(QStringLiteral("MatomoQt/consentState"), 999);
 
     const MatomoQt::QSettingsConsentStore store(settings);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Unknown);
 
     settings->setValue(QStringLiteral("MatomoQt/consentState"), QStringLiteral("bogus"));
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Unknown);
 
     settings->setValue(QStringLiteral("MatomoQt/consentState"), -1);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Unknown);
 }
 
 void StoresTest::qSettingsConsentStoreMissingValueReturnsUnknown() {
     auto settings = createTempQSettings(this);
     MatomoQt::QSettingsConsentStore store(settings);
 
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Unknown);
 }
 
 void StoresTest::qSettingsConsentStoreOverwritesOldValue() {
     auto settings = createTempQSettings(this);
     MatomoQt::QSettingsConsentStore store(settings);
 
-    store.setConsentState(MatomoQt::ConsentState::Granted);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Granted);
+    store.setConsentState(MatomoQt::ConsentState::Value::Granted);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Granted);
 
-    store.setConsentState(MatomoQt::ConsentState::Withdrawn);
-    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Withdrawn);
+    store.setConsentState(MatomoQt::ConsentState::Value::Withdrawn);
+    QCOMPARE(store.consentState(), MatomoQt::ConsentState::Value::Withdrawn);
 
     MatomoQt::QSettingsConsentStore freshStore(settings);
-    QCOMPARE(freshStore.consentState(), MatomoQt::ConsentState::Withdrawn);
+    QCOMPARE(freshStore.consentState(), MatomoQt::ConsentState::Value::Withdrawn);
 }
 
 void StoresTest::qSettingsClientIdStorePersistsValue() {

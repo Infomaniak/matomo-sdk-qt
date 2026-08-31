@@ -180,7 +180,7 @@ void NetworkDispatcherTest::dispatchSucceedsOn2xx() {
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::Success);
+    QCOMPARE(result.status, DispatchStatus::Value::Success);
     QCOMPARE(result.httpStatus, 200);
     QVERIFY(result.success());
     QVERIFY(!dispatcher.isCircuitBreakerOpen());
@@ -199,7 +199,7 @@ void NetworkDispatcherTest::dispatchFailsWhenServerClosesConnection() {
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::NetworkError);
+    QCOMPARE(result.status, DispatchStatus::Value::NetworkError);
     QCOMPARE(result.httpStatus, 0);
     QVERIFY(!result.success());
 }
@@ -223,7 +223,7 @@ void NetworkDispatcherTest::dispatchFailsOnTimeout() {
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::Timeout);
+    QCOMPARE(result.status, DispatchStatus::Value::Timeout);
     QCOMPARE(result.httpStatus, 0);
     QVERIFY(!result.success());
 }
@@ -246,7 +246,7 @@ void NetworkDispatcherTest::dispatchFailsOnNon2xxResponse() {
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::NetworkError);
+    QCOMPARE(result.status, DispatchStatus::Value::NetworkError);
     QCOMPARE(result.httpStatus, 500);
     QVERIFY(!result.success());
 }
@@ -304,7 +304,7 @@ void NetworkDispatcherTest::circuitBreakerBlocksDispatchWhenOpen() {
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::CircuitBreakerOpen);
+    QCOMPARE(result.status, DispatchStatus::Value::CircuitBreakerOpen);
     QVERIFY(!result.success());
 }
 
@@ -395,7 +395,7 @@ void NetworkDispatcherTest::circuitBreakerResetsOnSuccess() {
         dispatcher.dispatch(server.url());
         QVERIFY(finishedSpy.wait(5000));
         const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-        QCOMPARE(result.status, DispatchResult::Status::Success);
+        QCOMPARE(result.status, DispatchStatus::Value::Success);
     }
 
     QVERIFY(!dispatcher.isCircuitBreakerOpen());
@@ -443,7 +443,7 @@ void NetworkDispatcherTest::customNetworkAccessManagerIsUsed() {
     QCOMPARE(finishedSpy.count(), 1);
 
     const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
-    QCOMPARE(result.status, DispatchResult::Status::Success);
+    QCOMPARE(result.status, DispatchStatus::Value::Success);
     QCOMPARE(result.httpStatus, 200);
 
     // The dispatcher should not own the externally provided NAM.

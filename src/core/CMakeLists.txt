@@ -29,6 +29,7 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/CustomDimension.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/DispatchResult.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/DispatchStatus.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryClientIdStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryConsentStore.h"
@@ -44,6 +45,7 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildOptions.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildResult.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestResult.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestStatus.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Tracker.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerConfig.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/TrackerStats.h"
@@ -62,6 +64,8 @@ set_target_properties(MatomoQtCore PROPERTIES
     VERSION "${PROJECT_VERSION}"
     SOVERSION "${PROJECT_VERSION_MAJOR}"
 )
+
+qt6_extract_metatypes(MatomoQtCore)
 
 include(GenerateExportHeader)
 generate_export_header(MatomoQtCore

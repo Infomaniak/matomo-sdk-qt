@@ -198,11 +198,11 @@ void RequestBuilderTest::rejectsInvalidClientId() {
     const RequestBuilder builder(validConfig());
 
     const auto tooShort = builder.buildPing(QStringLiteral("settings"), {.clientId = QStringLiteral("0123456789abcde")});
-    QCOMPARE(tooShort.result.status, RequestResult::Status::InvalidPayload);
+    QCOMPARE(tooShort.result.status, RequestStatus::Value::RequestInvalidPayload);
     QVERIFY(tooShort.request.url.isEmpty());
 
     const auto notHex = builder.buildPing(QStringLiteral("settings"), {.clientId = QStringLiteral("0123456789abcdeg")});
-    QCOMPARE(notHex.result.status, RequestResult::Status::InvalidPayload);
+    QCOMPARE(notHex.result.status, RequestStatus::Value::RequestInvalidPayload);
     QVERIFY(notHex.request.url.isEmpty());
 }
 
@@ -322,7 +322,7 @@ void RequestBuilderTest::rejectsAbsolutePageViewPath() {
 
     for (const auto &escapingPath: {QStringLiteral("https://other/x"), QStringLiteral("//other/x")}) {
         const auto result = builder.buildPageView({.path = escapingPath});
-        QVERIFY2(result.result.status == RequestResult::Status::InvalidPayload, qPrintable(escapingPath));
+        QVERIFY2(result.result.status == RequestStatus::Value::RequestInvalidPayload, qPrintable(escapingPath));
         QVERIFY2(result.request.url.isEmpty(), qPrintable(escapingPath));
     }
 }
@@ -332,7 +332,7 @@ void RequestBuilderTest::rejectsAbsolutePingPath() {
 
     for (const auto &escapingPath: {QStringLiteral("https://other/x"), QStringLiteral("//other/x")}) {
         const auto result = builder.buildPing(escapingPath);
-        QVERIFY2(result.result.status == RequestResult::Status::InvalidPayload, qPrintable(escapingPath));
+        QVERIFY2(result.result.status == RequestStatus::Value::RequestInvalidPayload, qPrintable(escapingPath));
         QVERIFY2(result.request.url.isEmpty(), qPrintable(escapingPath));
     }
 }
@@ -368,21 +368,21 @@ void RequestBuilderTest::rejectsInvalidConfig() {
     RequestBuilder builder(config);
 
     auto result = builder.buildPing(QStringLiteral("settings"));
-    QCOMPARE(result.result.status, RequestResult::Status::InvalidConfig);
+    QCOMPARE(result.result.status, RequestStatus::Value::RequestInvalidConfig);
     QVERIFY(result.request.url.isEmpty());
 
     config = validConfig();
     config.siteId = 0;
     builder.setConfig(config);
     result = builder.buildPing(QStringLiteral("settings"));
-    QCOMPARE(result.result.status, RequestResult::Status::InvalidConfig);
+    QCOMPARE(result.result.status, RequestStatus::Value::RequestInvalidConfig);
     QVERIFY(result.request.url.isEmpty());
 
     config = validConfig();
     config.actionUrlBase = QUrl(QStringLiteral("settings"));
     builder.setConfig(config);
     result = builder.buildPing(QStringLiteral("settings"));
-    QCOMPARE(result.result.status, RequestResult::Status::InvalidConfig);
+    QCOMPARE(result.result.status, RequestStatus::Value::RequestInvalidConfig);
     QVERIFY(result.request.url.isEmpty());
 }
 
@@ -391,13 +391,13 @@ void RequestBuilderTest::rejectsInvalidConfigAcrossBuilders() {
         auto missingEndpoint = validConfig();
         missingEndpoint.endpoint = QUrl();
         const auto endpointResult = builderCall.build(RequestBuilder(missingEndpoint), {});
-        QVERIFY2(endpointResult.result.status == RequestResult::Status::InvalidConfig, builderCall.name.constData());
+        QVERIFY2(endpointResult.result.status == RequestStatus::Value::RequestInvalidConfig, builderCall.name.constData());
         QVERIFY2(endpointResult.request.url.isEmpty(), builderCall.name.constData());
 
         auto relativeActionUrlBase = validConfig();
         relativeActionUrlBase.actionUrlBase = QUrl(QStringLiteral("settings"));
         const auto actionUrlResult = builderCall.build(RequestBuilder(relativeActionUrlBase), {});
-        QVERIFY2(actionUrlResult.result.status == RequestResult::Status::InvalidConfig, builderCall.name.constData());
+        QVERIFY2(actionUrlResult.result.status == RequestStatus::Value::RequestInvalidConfig, builderCall.name.constData());
         QVERIFY2(actionUrlResult.request.url.isEmpty(), builderCall.name.constData());
     }
 }
@@ -407,7 +407,7 @@ void RequestBuilderTest::rejectsInvalidClientIdAcrossBuilders() {
 
     for (const auto &builderCall: allBuilders()) {
         const auto result = builderCall.build(builder, {.clientId = QStringLiteral("0123456789abcde")});
-        QVERIFY2(result.result.status == RequestResult::Status::InvalidPayload, builderCall.name.constData());
+        QVERIFY2(result.result.status == RequestStatus::Value::RequestInvalidPayload, builderCall.name.constData());
         QVERIFY2(result.request.url.isEmpty(), builderCall.name.constData());
     }
 }
@@ -441,29 +441,29 @@ void RequestBuilderTest::rejectsDuplicateEventDimensions() {
             .customDimensions = {{.id = 1, .value = QStringLiteral("a")}, {.id = 1, .value = QStringLiteral("b")}},
     });
 
-    QCOMPARE(result.result.status, RequestResult::Status::InvalidPayload);
+    QCOMPARE(result.result.status, RequestStatus::Value::RequestInvalidPayload);
     QVERIFY(result.request.url.isEmpty());
 }
 
 void RequestBuilderTest::rejectsInvalidPayload() {
     const RequestBuilder builder(validConfig());
 
-    QCOMPARE(builder.buildPageView({}).result.status, RequestResult::Status::InvalidPayload);
-    QCOMPARE(builder.buildPing({}).result.status, RequestResult::Status::InvalidPayload);
+    QCOMPARE(builder.buildPageView({}).result.status, RequestStatus::Value::RequestInvalidPayload);
+    QCOMPARE(builder.buildPing({}).result.status, RequestStatus::Value::RequestInvalidPayload);
     QCOMPARE(builder.buildEvent({.category = QStringLiteral("preferences")}).result.status,
-             RequestResult::Status::InvalidPayload);
+             RequestStatus::Value::RequestInvalidPayload);
     QCOMPARE(builder.buildEvent({.category = QStringLiteral("preferences"),
                                  .action = QStringLiteral("click"),
                                  .value = std::numeric_limits<double>::quiet_NaN()})
                      .result.status,
-             RequestResult::Status::InvalidPayload);
+             RequestStatus::Value::RequestInvalidPayload);
     QCOMPARE(builder.buildPageView({.path = QStringLiteral("settings"), .customDimensions = {{.id = 1000}}}).result.status,
-             RequestResult::Status::InvalidPayload);
+             RequestStatus::Value::RequestInvalidPayload);
     QCOMPARE(builder.buildPageView({.path = QStringLiteral("settings"),
                                     .customDimensions = {{.id = 1, .value = QStringLiteral("a")},
                                                          {.id = 1, .value = QStringLiteral("b")}}})
                      .result.status,
-             RequestResult::Status::InvalidPayload);
+             RequestStatus::Value::RequestInvalidPayload);
 }
 
 QTEST_MAIN(RequestBuilderTest)

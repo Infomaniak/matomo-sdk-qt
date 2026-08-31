@@ -17,9 +17,9 @@ permissions:
 jobs:
   build:
     name: Build and install (ubuntu-${{ matrix.ubuntu }}, Qt ${{ matrix.qt }})
-    runs-on: [self-hosted, "ubuntu-${{ matrix.ubuntu }}", "qt-${{ matrix.qt }}"]
+    runs-on: &runner-labels [self-hosted, "ubuntu-${{ matrix.ubuntu }}", "qt-${{ matrix.qt }}"]
 
-    strategy:
+    strategy: &qt-strategy
       fail-fast: false
       matrix:
         include:
@@ -126,3 +126,44 @@ jobs:
             coverage-html
             coverage.xml
           retention-days: 14
+
+  qml:
+    name: QML module (ubuntu-${{ matrix.ubuntu }}, Qt ${{ matrix.qt }})
+    runs-on: *runner-labels
+
+    strategy: *qt-strategy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DMATOMOQT_BUILD_QML=ON
+          -DMATOMOQT_BUILD_TESTS=ON
+          -DMATOMOQT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Install QML module
+        run: cmake --install build --prefix "$RUNNER_TEMP/matomoqt-install"
+
+      - name: Configure downstream QML consumer
+        run: >
+          cmake -S tests/consumer -B "$RUNNER_TEMP/matomoqt-qml-consumer-build"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/matomoqt-install"
+
+      - name: Build downstream QML consumer
+        run: cmake --build "$RUNNER_TEMP/matomoqt-qml-consumer-build" --parallel
+
+      - name: Run downstream QML consumer
+        env:
+          QML2_IMPORT_PATH: ${{ runner.temp }}/matomoqt-install/lib/qml
+        run: "$RUNNER_TEMP/matomoqt-qml-consumer-build/matomoqt_qml_consumer"
