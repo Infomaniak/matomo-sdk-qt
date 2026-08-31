@@ -64,6 +64,7 @@ class TrackerTest : public QObject {
 
         static void trackerReadsClientIdFromStore();
         static void trackerWritesClientIdToStore();
+        static void trackerRejectsInvalidClientId();
         static void trackerSwappingToDeniedStoreClearsPersistedClientId();
         static void trackerSwappingToWithdrawnStoreClearsPersistedClientId();
         static void trackerSwappingClientIdStoreUnderDeniedConsentClearsId();
@@ -389,8 +390,20 @@ void TrackerTest::trackerWritesClientIdToStore() {
 
     Tracker tracker;
     tracker.setClientIdStore(&store);
-    tracker.setClientId(QStringLiteral("0123456789abcdef"));
+    QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
 
+    QCOMPARE(store.clientId(), QStringLiteral("0123456789abcdef"));
+    QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
+}
+
+void TrackerTest::trackerRejectsInvalidClientId() {
+    InMemoryClientIdStore store;
+    store.setClientId(QStringLiteral("0123456789abcdef"));
+
+    Tracker tracker;
+    tracker.setClientIdStore(&store);
+
+    QVERIFY(!tracker.setClientId(QStringLiteral("not-a-client-id")));
     QCOMPARE(store.clientId(), QStringLiteral("0123456789abcdef"));
     QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
 }
@@ -477,9 +490,9 @@ void TrackerTest::trackerResettingClientIdStorePreservesCurrentId() {
     InMemoryClientIdStore externalStore;
 
     Tracker tracker;
-    tracker.setClientId(QStringLiteral("0123456789abcdef"));
+    QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
     tracker.setClientIdStore(&externalStore);
-    tracker.setClientId(QStringLiteral("fedcba9876543210"));
+    QVERIFY(tracker.setClientId(QStringLiteral("fedcba9876543210")));
     tracker.setClientIdStore(nullptr);
 
     QCOMPARE(tracker.clientId(), QStringLiteral("fedcba9876543210"));

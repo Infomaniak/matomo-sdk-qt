@@ -60,9 +60,9 @@ The public API includes:
   `QNetworkAccessManager`, timeout, circuit breaker and `rand` cache-busting;
   it never silently ignores SSL errors and never logs full tracking URLs.
 
-`Tracker` validates local state only. It does not send HTTP requests yet;
-network dispatching is handled by the standalone `NetworkDispatcher`, which
-will be wired to the `Tracker` in a later milestone.
+`Tracker` orchestrates privacy checks, request building and asynchronous
+network dispatching. Tracking calls report local acceptance synchronously,
+while `dispatchFinished()` reports the eventual network result.
 
 ## Non-Goals
 

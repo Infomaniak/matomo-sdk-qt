@@ -26,6 +26,7 @@
 
 #include <QtCore/QLocale>
 #include <QtCore/QRandomGenerator>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QSet>
 #include <QtCore/QUrlQuery>
 
@@ -47,6 +48,11 @@ QString generateClientId() {
 QString generatePageViewId() {
     const quint32 part = QRandomGenerator::global()->generate();
     return QString::number(part, 16).rightJustified(6, u'0').right(6).toUpper();
+}
+
+bool isValidClientId(const QString &clientId) {
+    static const QRegularExpression clientIdPattern(QStringLiteral("^[0-9A-Fa-f]{16}$"));
+    return clientId.isEmpty() || clientIdPattern.match(clientId).hasMatch();
 }
 
 } // namespace
@@ -155,8 +161,13 @@ QString Tracker::clientId() const {
     return m_clientIdStore->clientId();
 }
 
-void Tracker::setClientId(const QString &clientId) const {
+bool Tracker::setClientId(const QString &clientId) const {
+    if (!isValidClientId(clientId)) {
+        return false;
+    }
+
     m_clientIdStore->setClientId(clientId);
+    return true;
 }
 
 void Tracker::resetClientId() {
@@ -233,15 +244,21 @@ RequestResult Tracker::trackPageView(const PageView &pageView) {
         return buildResult.result;
     }
 
-    m_currentPageViewId = generatePageViewId();
-    m_lastPageViewPath = enriched.path;
+    const QString pageViewId = generatePageViewId();
+    const bool forceNewVisit = m_forceNewVisit;
 
     QUrl url = buildResult.request.url;
-    addTrackerParameters(url);
+    addTrackerParameters(url, pageViewId, forceNewVisit);
 
     qCDebug(matomoSdk) << "dispatching page view";
-    m_dispatcher->dispatch(url);
-    recordSent();
+    if (m_dispatcher->dispatch(url)) {
+        m_currentPageViewId = pageViewId;
+        m_lastPageViewPath = enriched.path;
+        if (forceNewVisit) {
+            m_forceNewVisit = false;
+        }
+        recordSent();
+    }
 
     return result(RequestResult::Status::Accepted);
 }
@@ -269,11 +286,16 @@ RequestResult Tracker::trackEvent(const Event &event) {
     }
 
     QUrl url = buildResult.request.url;
-    addTrackerParameters(url);
+    const bool forceNewVisit = m_forceNewVisit;
+    addTrackerParameters(url, m_currentPageViewId, forceNewVisit);
 
     qCDebug(matomoSdk) << "dispatching event";
-    m_dispatcher->dispatch(url);
-    recordSent();
+    if (m_dispatcher->dispatch(url)) {
+        if (forceNewVisit) {
+            m_forceNewVisit = false;
+        }
+        recordSent();
+    }
 
     return result(RequestResult::Status::Accepted);
 }
@@ -294,11 +316,16 @@ RequestResult Tracker::sendPing() {
     }
 
     QUrl url = buildResult.request.url;
-    addTrackerParameters(url);
+    const bool forceNewVisit = m_forceNewVisit;
+    addTrackerParameters(url, m_currentPageViewId, forceNewVisit);
 
     qCDebug(matomoSdk) << "dispatching ping";
-    m_dispatcher->dispatch(url);
-    recordSent();
+    if (m_dispatcher->dispatch(url)) {
+        if (forceNewVisit) {
+            m_forceNewVisit = false;
+        }
+        recordSent();
+    }
 
     return result(RequestResult::Status::Accepted);
 }
@@ -358,16 +385,15 @@ QList<CustomDimension> Tracker::mergeDimensions(const QList<CustomDimension> &ca
     return merged;
 }
 
-void Tracker::addTrackerParameters(QUrl &url) {
+void Tracker::addTrackerParameters(QUrl &url, const QString &pageViewId, const bool forceNewVisit) const {
     QUrlQuery query(url);
 
-    if (!m_currentPageViewId.isEmpty()) {
-        query.addQueryItem(QStringLiteral("pv_id"), m_currentPageViewId);
+    if (!pageViewId.isEmpty()) {
+        query.addQueryItem(QStringLiteral("pv_id"), pageViewId);
     }
 
-    if (m_forceNewVisit) {
+    if (forceNewVisit) {
         query.addQueryItem(QStringLiteral("new_visit"), QStringLiteral("1"));
-        m_forceNewVisit = false;
     }
 
     url.setQuery(query);

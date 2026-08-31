@@ -86,8 +86,12 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         /** Returns the current client ID, read from the active store. */
         [[nodiscard]] QString clientId() const;
 
-        /** Persists the client ID, written to the active store. */
-        void setClientId(const QString &clientId) const;
+        /** Persists a valid client ID in the active store.
+         *
+         * The ID must be empty or contain exactly 16 hexadecimal characters.
+         * Returns false and leaves the store unchanged when validation fails.
+         */
+        [[nodiscard]] bool setClientId(const QString &clientId) const;
 
         /** Resets the client ID, clearing the active store. */
         void resetClientId();
@@ -154,7 +158,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
 
         RequestBuildOptions buildOptions() const;
         QList<CustomDimension> mergeDimensions(const QList<CustomDimension> &callDimensions) const;
-        void addTrackerParameters(QUrl &url);
+        void addTrackerParameters(QUrl &url, const QString &pageViewId, bool forceNewVisit) const;
         void ensureClientId();
         void recordBlocked();
         void recordSent();
