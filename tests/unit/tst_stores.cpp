@@ -93,16 +93,16 @@ void StoresTest::qSettingsConsentStorePersistsState() {
 }
 
 void StoresTest::qSettingsConsentStoreInvalidValueReturnsUnknown() {
-    auto settings = createTempQSettings(this);
-    settings->setValue(QStringLiteral("consentState"), 999);
+    const auto settings = createTempQSettings(this);
+    settings->setValue(QStringLiteral("MatomoQt/consentState"), 999);
 
-    MatomoQt::QSettingsConsentStore store(settings);
+    const MatomoQt::QSettingsConsentStore store(settings);
     QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
 
-    settings->setValue(QStringLiteral("consentState"), QStringLiteral("bogus"));
+    settings->setValue(QStringLiteral("MatomoQt/consentState"), QStringLiteral("bogus"));
     QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
 
-    settings->setValue(QStringLiteral("consentState"), -1);
+    settings->setValue(QStringLiteral("MatomoQt/consentState"), -1);
     QCOMPARE(store.consentState(), MatomoQt::ConsentState::Unknown);
 }
 

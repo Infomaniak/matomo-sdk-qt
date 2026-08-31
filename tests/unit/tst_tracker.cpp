@@ -6,6 +6,7 @@
 #include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/PageView.h>
 #include <MatomoQt/PrivacyMode.h>
+#include <MatomoQt/QSettingsConsentStore.h>
 #include <MatomoQt/RequestResult.h>
 #include <MatomoQt/Tracker.h>
 #include <MatomoQt/TrackerConfig.h>
@@ -37,6 +38,7 @@ class TrackerTest : public QObject {
         static void trackerSupportsDisabledAndOptOutModes();
 
         static void trackerPersistsConsentStateToStore();
+        static void trackerDoesNotEmitUnpersistedConsentState();
         static void trackerReadsConsentStateFromStoreOnSwap();
         static void trackerEmitsConsentChangedOnStoreSwap();
         static void trackerResetClientIdClearsStore();
@@ -265,6 +267,18 @@ void TrackerTest::trackerPersistsConsentStateToStore() {
     tracker.setConsentState(ConsentState::Denied);
     QCOMPARE(store.consentState(), ConsentState::Denied);
     QCOMPARE(tracker.consentState(), ConsentState::Denied);
+}
+
+void TrackerTest::trackerDoesNotEmitUnpersistedConsentState() {
+    QSettingsConsentStore store(nullptr);
+    Tracker tracker;
+    tracker.setConsentStore(&store);
+
+    QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
+    tracker.setConsentState(ConsentState::Granted);
+
+    QCOMPARE(tracker.consentState(), ConsentState::Unknown);
+    QCOMPARE(consentSpy.count(), 0);
 }
 
 void TrackerTest::trackerReadsConsentStateFromStoreOnSwap() {

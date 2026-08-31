@@ -40,7 +40,8 @@ ConsentState Tracker::consentState() const {
 }
 
 void Tracker::setConsentState(const ConsentState state) {
-    if (m_consentStore->consentState() == state) {
+    const auto previousState = m_consentStore->consentState();
+    if (previousState == state) {
         return;
     }
 
@@ -51,7 +52,9 @@ void Tracker::setConsentState(const ConsentState state) {
         m_clientIdStore->clearClientId();
     }
 
-    emit consentStateChanged(state);
+    if (const auto persistedState = m_consentStore->consentState(); persistedState != previousState) {
+        emit consentStateChanged(persistedState);
+    }
 }
 
 bool Tracker::isEnabled() const {
