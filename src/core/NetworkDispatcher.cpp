@@ -62,6 +62,7 @@ NetworkDispatcher::~NetworkDispatcher() {
         }
         disconnect(reply, nullptr, this, nullptr);
         reply->abort();
+        reply->deleteLater();
     }
 }
 

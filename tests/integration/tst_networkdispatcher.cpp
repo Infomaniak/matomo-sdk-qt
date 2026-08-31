@@ -19,7 +19,9 @@
 #include <MatomoQt/NetworkDispatcher.h>
 #include <MatomoQt/NetworkDispatcherConfig.h>
 
+#include <QtCore/QPointer>
 #include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
 #include <QtTest/QtTest>
@@ -43,6 +45,7 @@ class TestHttpServer : public QObject {
             Respond200,
             Respond500,
             HangWithoutResponse,
+            CloseWithoutResponse,
         };
 
         explicit TestHttpServer(Mode mode = Mode::Respond200, QObject *parent = nullptr)
@@ -122,6 +125,9 @@ class TestHttpServer : public QObject {
                 case Mode::HangWithoutResponse:
                     // Intentionally do nothing; let the timeout fire.
                     break;
+                case Mode::CloseWithoutResponse:
+                    socket->disconnectFromHost();
+                    break;
             }
         }
 
@@ -139,7 +145,7 @@ class NetworkDispatcherTest : public QObject {
         void cleanupTestCase();
 
         void dispatchSucceedsOn2xx();
-        void dispatchFailsOnConnectionRefused();
+        void dispatchFailsWhenServerClosesConnection();
         void dispatchFailsOnTimeout();
         void dispatchFailsOnNon2xxResponse();
         void circuitBreakerOpensAfterConsecutiveFailures();
@@ -151,6 +157,7 @@ class NetworkDispatcherTest : public QObject {
         void customNetworkAccessManagerIsUsed();
         void configDefaultsAreSafe();
         void destructionWithPendingRepliesDoesNotCrash();
+        void destructionDeletesPendingRepliesFromExternalManager();
 };
 
 void NetworkDispatcherTest::initTestCase() {
@@ -179,16 +186,15 @@ void NetworkDispatcherTest::dispatchSucceedsOn2xx() {
     QVERIFY(!dispatcher.isCircuitBreakerOpen());
 }
 
-void NetworkDispatcherTest::dispatchFailsOnConnectionRefused() {
+void NetworkDispatcherTest::dispatchFailsWhenServerClosesConnection() {
+    TestHttpServer server(TestHttpServer::Mode::CloseWithoutResponse);
+    QVERIFY(server.start());
+
     NetworkDispatcher dispatcher;
     QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
 
-    // Dispatch to a port where nothing is listening (port 1 is reserved and
-    // typically not in use).
-    QUrl url(QStringLiteral("http://127.0.0.1:1/matomo.php"));
-    dispatcher.dispatch(url);
+    dispatcher.dispatch(server.url());
 
-    // Connection refused may be reported quickly; allow up to 5 s.
     QVERIFY(finishedSpy.wait(5000));
     QCOMPARE(finishedSpy.count(), 1);
 
@@ -476,6 +482,24 @@ void NetworkDispatcherTest::destructionWithPendingRepliesDoesNotCrash() {
     }
 
     QVERIFY(true); // If we reach here, the test passed.
+}
+
+void NetworkDispatcherTest::destructionDeletesPendingRepliesFromExternalManager() {
+    TestHttpServer server(TestHttpServer::Mode::HangWithoutResponse);
+    QVERIFY(server.start());
+
+    QNetworkAccessManager nam;
+    QPointer<QNetworkReply> pendingReply;
+    {
+        NetworkDispatcher dispatcher(&nam);
+        dispatcher.dispatch(server.url());
+
+        const auto replies = nam.findChildren<QNetworkReply *>();
+        QCOMPARE(replies.size(), 1);
+        pendingReply = replies.constFirst();
+    }
+
+    QTRY_VERIFY(pendingReply.isNull());
 }
 
 } // namespace
