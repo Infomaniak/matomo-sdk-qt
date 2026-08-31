@@ -95,7 +95,7 @@ template<PayloadParameterAppender AddPayloadParameters>
 RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionUrl, const RequestBuildOptions &options,
                                 AddPayloadParameters addPayloadParameters) {
     if (!config.isValid()) {
-        return invalidConfig(QStringLiteral("Tracker endpoint and site ID are required."));
+        return invalidConfig(QStringLiteral("Tracker endpoint, action URL base and site ID are required."));
     }
 
     if (!hasValidActionUrlBase(config.actionUrlBase)) {

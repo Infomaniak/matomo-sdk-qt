@@ -45,7 +45,13 @@ GroupBox {
             currentIndex: MatomoTracker.privacyMode
             onActivated: {
                 MatomoTracker.privacyMode = currentValue
-                logCallback("[settings] Privacy mode changed to %1".arg(currentText))
+                const actual = MatomoTracker.privacyMode
+                if (actual !== currentValue) {
+                    currentIndex = actual
+                    logCallback("[settings] Privacy mode change rejected (tracker initialized); staying at %1".arg(privacyModeName(actual)))
+                } else {
+                    logCallback("[settings] Privacy mode changed to %1".arg(currentText))
+                }
             }
         }
 

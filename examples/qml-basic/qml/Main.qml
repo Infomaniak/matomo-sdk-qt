@@ -30,10 +30,24 @@ ApplicationWindow {
     // The tracker is a singleton, configured once here.
     // Every QML file that imports MatomoQt can use MatomoTracker directly.
     Component.onCompleted: {
-        MatomoTracker.endpoint = "http://127.0.0.1:8080/matomo.php"
-        MatomoTracker.actionUrlBase = "app://matomoqt-qml-basic-example/"
-        MatomoTracker.siteId = 1
-        MatomoTracker.privacyMode = PrivacyMode.RequiresConsent
+        const expectedEndpoint = "http://127.0.0.1:8080/matomo.php"
+        const expectedActionUrlBase = "app://matomoqt-qml-basic-example/"
+        const expectedSiteId = 1
+        const expectedPrivacyMode = PrivacyMode.RequiresConsent
+
+        MatomoTracker.endpoint = expectedEndpoint
+        MatomoTracker.actionUrlBase = expectedActionUrlBase
+        MatomoTracker.siteId = expectedSiteId
+        MatomoTracker.privacyMode = expectedPrivacyMode
+
+        const logSet = (name, accepted, actual) => {
+            appendLog("[config] %1 -> %2".arg(name).arg(accepted ? "accepted" : "rejected (got %1)".arg(actual)))
+        }
+
+        logSet("endpoint", MatomoTracker.endpoint.toString() === expectedEndpoint, MatomoTracker.endpoint.toString())
+        logSet("actionUrlBase", MatomoTracker.actionUrlBase.toString() === expectedActionUrlBase, MatomoTracker.actionUrlBase.toString())
+        logSet("siteId", MatomoTracker.siteId === expectedSiteId, MatomoTracker.siteId)
+        logSet("privacyMode", MatomoTracker.privacyMode === expectedPrivacyMode, privacyModeName(MatomoTracker.privacyMode))
     }
 
     Connections {
@@ -56,6 +70,15 @@ ApplicationWindow {
             case ConsentState.Granted: return "Granted";
             case ConsentState.Denied: return "Denied";
             case ConsentState.Withdrawn: return "Withdrawn";
+            default: return "Unknown";
+        }
+    }
+
+    function privacyModeName(mode) {
+        switch (mode) {
+            case PrivacyMode.Disabled: return "Disabled";
+            case PrivacyMode.RequiresConsent: return "Requires consent";
+            case PrivacyMode.ConsentExemptWithOptOut: return "Consent exempt with opt-out";
             default: return "Unknown";
         }
     }

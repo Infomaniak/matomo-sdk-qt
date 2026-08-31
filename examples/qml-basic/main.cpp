@@ -29,6 +29,8 @@ Q_IMPORT_QML_PLUGIN(MatomoQtPlugin)
 
 int main(int argc, char *argv[]) {
     const QGuiApplication app(argc, argv);
+    QGuiApplication::setOrganizationName(QStringLiteral("MatomoQtExamples"));
+    QGuiApplication::setApplicationName(QStringLiteral("QmlBasicExample"));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("MatomoQt QML basic example"));

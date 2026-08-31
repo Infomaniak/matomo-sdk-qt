@@ -23,11 +23,14 @@
 #include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/PageView.h>
 #include <MatomoQt/PrivacyMode.h>
+#include <MatomoQt/QSettingsClientIdStore.h>
 #include <MatomoQt/QSettingsConsentStore.h>
 #include <MatomoQt/RequestResult.h>
 #include <MatomoQt/Tracker.h>
 #include <MatomoQt/TrackerConfig.h>
 
+#include <QtCore/QSettings>
+#include <QtCore/QTemporaryFile>
 #include <QtTest/QtTest>
 
 #include <limits>
@@ -40,7 +43,7 @@ class TrackerTest : public QObject {
 
     private slots:
         static void defaultConfigIsPrivacySafe();
-        static void configValidityRequiresEndpointAndSiteId();
+        static void configValidityRequiresEndpointActionUrlAndSiteId();
 
         static void payloadValidityUsesRequiredFields();
         static void trackerDoesNotAcceptWithoutConsentByDefault();
@@ -50,14 +53,12 @@ class TrackerTest : public QObject {
         static void trackerRejectsInvalidConfigForValidTrackingCalls();
         static void trackerRejectsInvalidPayloadAfterConsent();
         static void trackerDoesNotEmitSignalsForUnchangedValues();
-        static void trackerEmitsConfigChangedForChangedConfig();
 
         static void trackerSupportsDisabledAndOptOutModes();
 
         static void trackerPersistsConsentStateToStore();
         static void trackerDoesNotEmitUnpersistedConsentState();
-        static void trackerReadsConsentStateFromStoreOnSwap();
-        static void trackerEmitsConsentChangedOnStoreSwap();
+        static void trackerReadsConsentStateFromStore();
         static void trackerResetClientIdClearsStore();
         static void trackerDenialClearsPersistedClientId();
         static void trackerWithdrawalClearsPersistedClientId();
@@ -65,13 +66,25 @@ class TrackerTest : public QObject {
         static void trackerReadsClientIdFromStore();
         static void trackerWritesClientIdToStore();
         static void trackerRejectsInvalidClientId();
-        static void trackerSwappingToDeniedStoreClearsPersistedClientId();
-        static void trackerSwappingToWithdrawnStoreClearsPersistedClientId();
-        static void trackerSwappingClientIdStoreUnderDeniedConsentClearsId();
-        static void trackerSwappingClientIdStoreUnderWithdrawnConsentClearsId();
-        static void trackerResettingConsentStorePreservesCurrentState();
-        static void trackerResettingClientIdStorePreservesCurrentId();
+        static void trackerConstructsWithDeniedStoreClearsClientId();
+        static void trackerConstructsWithWithdrawnStoreClearsClientId();
+
+        static void qSettingsStorePersistsConsentAcrossTrackerInstances();
+        static void qSettingsStorePersistsClientIdAcrossTrackerInstances();
+        static void qSettingsStoreDenialClearsPersistedClientId();
 };
+
+namespace {
+QSettings *createTempQSettings(QObject *parent) {
+    auto file = new QTemporaryFile(parent);
+    if (!file->open()) {
+        qFatal("Failed to create temporary file for QSettings");
+    }
+    const QString path = file->fileName();
+    file->close();
+    return new QSettings(path, QSettings::IniFormat, parent);
+}
+} // namespace
 } // namespace
 
 void TrackerTest::defaultConfigIsPrivacySafe() {
@@ -81,12 +94,14 @@ void TrackerTest::defaultConfigIsPrivacySafe() {
     QCOMPARE(config.siteId, 0);
     QCOMPARE(config.privacyMode, PrivacyMode::Value::RequiresConsent);
 
-    const Tracker tracker;
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    const Tracker tracker(TrackerConfig{}, consentStore, clientIdStore);
     QCOMPARE(tracker.consentState(), ConsentState::Value::Unknown);
     QVERIFY(tracker.isEnabled());
 }
 
-void TrackerTest::configValidityRequiresEndpointAndSiteId() {
+void TrackerTest::configValidityRequiresEndpointActionUrlAndSiteId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("matomo.example.com/matomo.php"));
 
@@ -96,7 +111,16 @@ void TrackerTest::configValidityRequiresEndpointAndSiteId() {
     config.endpoint = QUrl(QStringLiteral("file:///tmp/matomo.php"));
     QVERIFY(!config.isValid());
 
+    config.endpoint = QUrl(QStringLiteral("https:///matomo.php"));
+    QVERIFY(!config.isValid());
+
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    QVERIFY(!config.isValid());
+
+    config.actionUrlBase = QUrl(QStringLiteral("settings"));
+    QVERIFY(!config.isValid());
+
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     QVERIFY(config.isValid());
 }
 
@@ -151,9 +175,12 @@ void TrackerTest::payloadValidityUsesRequiredFields() {
 void TrackerTest::trackerDoesNotAcceptWithoutConsentByDefault() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
-    Tracker tracker(config);
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(config, consentStore, clientIdStore);
     const auto result = tracker.trackPageView({.path = QStringLiteral("preferences")});
 
     QVERIFY(!result.accepted());
@@ -166,7 +193,9 @@ void TrackerTest::trackerAcceptsCallsAfterConsent() {
     config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
-    Tracker tracker(config);
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(config, consentStore, clientIdStore);
     QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
     tracker.setConsentState(ConsentState::Value::Granted);
 
@@ -178,14 +207,18 @@ void TrackerTest::trackerAcceptsCallsAfterConsent() {
 }
 
 void TrackerTest::trackerRejectsInvalidPayloadBeforeTrackerState() {
-    Tracker tracker;
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(TrackerConfig{}, consentStore, clientIdStore);
 
     QCOMPARE(tracker.trackPageView({}).status, RequestStatus::Value::RequestInvalidPayload);
     QCOMPARE(tracker.trackEvent({}).status, RequestStatus::Value::RequestInvalidPayload);
 }
 
 void TrackerTest::trackerRejectsInvalidConfigForValidTrackingCalls() {
-    Tracker tracker;
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(TrackerConfig{}, consentStore, clientIdStore);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestInvalidConfig);
@@ -199,7 +232,9 @@ void TrackerTest::trackerRejectsInvalidPayloadAfterConsent() {
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
     config.siteId = 1;
 
-    Tracker tracker(config);
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(config, consentStore, clientIdStore);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QCOMPARE(tracker.trackPageView({}).status, RequestStatus::Value::RequestInvalidPayload);
@@ -223,35 +258,19 @@ void TrackerTest::trackerDoesNotEmitSignalsForUnchangedValues() {
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
     config.siteId = 1;
 
-    Tracker tracker(config);
+    InMemoryConsentStore consentStore;
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(config, consentStore, clientIdStore);
     tracker.setConsentState(ConsentState::Value::Granted);
 
-    QSignalSpy configSpy(&tracker, &Tracker::configChanged);
     QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
     QSignalSpy enabledSpy(&tracker, &Tracker::enabledChanged);
 
-    tracker.setConfig(config);
     tracker.setConsentState(ConsentState::Value::Granted);
     tracker.setEnabled(true);
 
-    QCOMPARE(configSpy.count(), 0);
     QCOMPARE(consentSpy.count(), 0);
     QCOMPARE(enabledSpy.count(), 0);
-}
-
-void TrackerTest::trackerEmitsConfigChangedForChangedConfig() {
-    TrackerConfig config;
-    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
-    config.siteId = 1;
-
-    Tracker tracker(config);
-    QSignalSpy configSpy(&tracker, &Tracker::configChanged);
-
-    config.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
-    tracker.setConfig(config);
-
-    QCOMPARE(configSpy.count(), 1);
-    QCOMPARE(tracker.config().privacyMode, PrivacyMode::Value::ConsentExemptWithOptOut);
 }
 
 void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
@@ -261,24 +280,29 @@ void TrackerTest::trackerSupportsDisabledAndOptOutModes() {
     config.siteId = 1;
     config.privacyMode = PrivacyMode::Value::Disabled;
 
-    Tracker tracker(config);
+    InMemoryConsentStore consentStore1;
+    InMemoryClientIdStore clientIdStore1;
+    Tracker tracker(config, consentStore1, clientIdStore1);
     QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestBlockedByPrivacy);
 
-    config.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
-    tracker.setConfig(config);
-    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestAccepted);
+    TrackerConfig optOutConfig = config;
+    optOutConfig.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
+    InMemoryConsentStore consentStore2;
+    InMemoryClientIdStore clientIdStore2;
+    Tracker optOutTracker(optOutConfig, consentStore2, clientIdStore2);
+    QCOMPARE(optOutTracker.sendPing().status, RequestStatus::Value::RequestAccepted);
 
-    tracker.setConsentState(ConsentState::Value::Denied);
-    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestBlockedByPrivacy);
+    optOutTracker.setConsentState(ConsentState::Value::Denied);
+    QCOMPARE(optOutTracker.sendPing().status, RequestStatus::Value::RequestBlockedByPrivacy);
 
-    tracker.setEnabled(false);
-    QCOMPARE(tracker.sendPing().status, RequestStatus::Value::RequestDisabled);
+    optOutTracker.setEnabled(false);
+    QCOMPARE(optOutTracker.sendPing().status, RequestStatus::Value::RequestDisabled);
 }
 
 void TrackerTest::trackerPersistsConsentStateToStore() {
     InMemoryConsentStore store;
-    Tracker tracker;
-    tracker.setConsentStore(&store);
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(TrackerConfig{}, store, clientIdStore);
 
     tracker.setConsentState(ConsentState::Value::Granted);
     QCOMPARE(store.consentState(), ConsentState::Value::Granted);
@@ -291,8 +315,8 @@ void TrackerTest::trackerPersistsConsentStateToStore() {
 
 void TrackerTest::trackerDoesNotEmitUnpersistedConsentState() {
     QSettingsConsentStore store(nullptr);
-    Tracker tracker;
-    tracker.setConsentStore(&store);
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(TrackerConfig{}, store, clientIdStore);
 
     QSignalSpy consentSpy(&tracker, &Tracker::consentStateChanged);
     tracker.setConsentState(ConsentState::Value::Granted);
@@ -301,35 +325,21 @@ void TrackerTest::trackerDoesNotEmitUnpersistedConsentState() {
     QCOMPARE(consentSpy.count(), 0);
 }
 
-void TrackerTest::trackerReadsConsentStateFromStoreOnSwap() {
+void TrackerTest::trackerReadsConsentStateFromStore() {
     InMemoryConsentStore store;
     store.setConsentState(ConsentState::Value::Granted);
 
-    Tracker tracker;
-    QCOMPARE(tracker.consentState(), ConsentState::Value::Unknown);
-
-    tracker.setConsentStore(&store);
+    InMemoryClientIdStore clientIdStore;
+    Tracker tracker(TrackerConfig{}, store, clientIdStore);
     QCOMPARE(tracker.consentState(), ConsentState::Value::Granted);
-}
-
-void TrackerTest::trackerEmitsConsentChangedOnStoreSwap() {
-    InMemoryConsentStore grantedStore;
-    grantedStore.setConsentState(ConsentState::Value::Granted);
-
-    Tracker tracker;
-    QSignalSpy spy(&tracker, &Tracker::consentStateChanged);
-
-    tracker.setConsentStore(&grantedStore);
-    QCOMPARE(spy.count(), 1);
-    QCOMPARE(spy.at(0).at(0).value<ConsentState::Value>(), ConsentState::Value::Granted);
 }
 
 void TrackerTest::trackerResetClientIdClearsStore() {
     InMemoryClientIdStore store;
     store.setClientId(QStringLiteral("abc123"));
 
-    Tracker tracker;
-    tracker.setClientIdStore(&store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(TrackerConfig{}, consentStore, store);
     tracker.resetClientId();
 
     QVERIFY(store.clientId().isEmpty());
@@ -345,8 +355,8 @@ void TrackerTest::trackerDenialClearsPersistedClientId() {
     InMemoryClientIdStore store;
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
-    Tracker tracker(config);
-    tracker.setClientIdStore(&store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(config, consentStore, store);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QVERIFY(tracker.trackPageView({.path = QStringLiteral("preferences")}).accepted());
@@ -365,8 +375,8 @@ void TrackerTest::trackerWithdrawalClearsPersistedClientId() {
     InMemoryClientIdStore store;
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
-    Tracker tracker(config);
-    tracker.setClientIdStore(&store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(config, consentStore, store);
     tracker.setConsentState(ConsentState::Value::Granted);
 
     QVERIFY(tracker.trackPageView({.path = QStringLiteral("preferences")}).accepted());
@@ -380,16 +390,16 @@ void TrackerTest::trackerReadsClientIdFromStore() {
     InMemoryClientIdStore store;
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
-    Tracker tracker;
-    tracker.setClientIdStore(&store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(TrackerConfig{}, consentStore, store);
     QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
 }
 
 void TrackerTest::trackerWritesClientIdToStore() {
     InMemoryClientIdStore store;
 
-    Tracker tracker;
-    tracker.setClientIdStore(&store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(TrackerConfig{}, consentStore, store);
     QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
 
     QCOMPARE(store.clientId(), QStringLiteral("0123456789abcdef"));
@@ -400,17 +410,18 @@ void TrackerTest::trackerRejectsInvalidClientId() {
     InMemoryClientIdStore store;
     store.setClientId(QStringLiteral("0123456789abcdef"));
 
-    Tracker tracker;
-    tracker.setClientIdStore(&store);
+    InMemoryConsentStore consentStore;
+    Tracker tracker(TrackerConfig{}, consentStore, store);
 
     QVERIFY(!tracker.setClientId(QStringLiteral("not-a-client-id")));
     QCOMPARE(store.clientId(), QStringLiteral("0123456789abcdef"));
     QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
 }
 
-void TrackerTest::trackerSwappingToDeniedStoreClearsPersistedClientId() {
+void TrackerTest::trackerConstructsWithDeniedStoreClearsClientId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     InMemoryClientIdStore idStore;
@@ -419,17 +430,16 @@ void TrackerTest::trackerSwappingToDeniedStoreClearsPersistedClientId() {
     InMemoryConsentStore consentStore;
     consentStore.setConsentState(ConsentState::Value::Denied);
 
-    Tracker tracker(config);
-    tracker.setClientIdStore(&idStore);
-    tracker.setConsentStore(&consentStore);
+    Tracker tracker(config, consentStore, idStore);
 
     QVERIFY(idStore.clientId().isEmpty());
     QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestBlockedByPrivacy);
 }
 
-void TrackerTest::trackerSwappingToWithdrawnStoreClearsPersistedClientId() {
+void TrackerTest::trackerConstructsWithWithdrawnStoreClearsClientId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     InMemoryClientIdStore idStore;
@@ -438,64 +448,80 @@ void TrackerTest::trackerSwappingToWithdrawnStoreClearsPersistedClientId() {
     InMemoryConsentStore consentStore;
     consentStore.setConsentState(ConsentState::Value::Withdrawn);
 
-    Tracker tracker(config);
-    tracker.setClientIdStore(&idStore);
-    tracker.setConsentStore(&consentStore);
+    Tracker tracker(config, consentStore, idStore);
 
     QVERIFY(idStore.clientId().isEmpty());
     QCOMPARE(tracker.trackPageView({.path = QStringLiteral("preferences")}).status, RequestStatus::Value::RequestBlockedByPrivacy);
 }
 
-void TrackerTest::trackerSwappingClientIdStoreUnderDeniedConsentClearsId() {
-    InMemoryConsentStore consentStore;
-    consentStore.setConsentState(ConsentState::Value::Denied);
+void TrackerTest::qSettingsStorePersistsConsentAcrossTrackerInstances() {
+    auto settings = createTempQSettings(qApp);
+    QSettingsConsentStore consentStore(settings);
 
-    InMemoryClientIdStore idStore;
-    idStore.setClientId(QStringLiteral("abc123"));
+    TrackerConfig config;
+    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.siteId = 1;
 
-    Tracker tracker;
-    tracker.setConsentStore(&consentStore);
-    tracker.setClientIdStore(&idStore);
+    {
+        InMemoryClientIdStore clientIdStore;
+        Tracker tracker(config, consentStore, clientIdStore);
+        tracker.setConsentState(ConsentState::Value::Granted);
+        QCOMPARE(tracker.consentState(), ConsentState::Value::Granted);
+    }
 
-    QVERIFY(idStore.clientId().isEmpty());
+    QSettingsConsentStore freshConsentStore(settings);
+    InMemoryClientIdStore freshClientIdStore;
+    Tracker freshTracker(config, freshConsentStore, freshClientIdStore);
+    QCOMPARE(freshTracker.consentState(), ConsentState::Value::Granted);
 }
 
-void TrackerTest::trackerSwappingClientIdStoreUnderWithdrawnConsentClearsId() {
-    InMemoryConsentStore consentStore;
-    consentStore.setConsentState(ConsentState::Value::Withdrawn);
+void TrackerTest::qSettingsStorePersistsClientIdAcrossTrackerInstances() {
+    auto settings = createTempQSettings(qApp);
+    QSettingsClientIdStore clientIdStore(settings);
 
-    InMemoryClientIdStore idStore;
-    idStore.setClientId(QStringLiteral("abc123"));
+    TrackerConfig config;
+    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.siteId = 1;
+    config.privacyMode = PrivacyMode::Value::ConsentExemptWithOptOut;
 
-    Tracker tracker;
-    tracker.setConsentStore(&consentStore);
-    tracker.setClientIdStore(&idStore);
+    {
+        InMemoryConsentStore consentStore;
+        Tracker tracker(config, consentStore, clientIdStore);
+        QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
+        QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
+    }
 
-    QVERIFY(idStore.clientId().isEmpty());
+    InMemoryConsentStore freshConsentStore;
+    QSettingsClientIdStore freshClientIdStore(settings);
+    Tracker freshTracker(config, freshConsentStore, freshClientIdStore);
+    QCOMPARE(freshTracker.clientId(), QStringLiteral("0123456789abcdef"));
 }
 
-void TrackerTest::trackerResettingConsentStorePreservesCurrentState() {
-    InMemoryConsentStore externalStore;
+void TrackerTest::qSettingsStoreDenialClearsPersistedClientId() {
+    auto settings = createTempQSettings(qApp);
+    QSettingsConsentStore consentStore(settings);
+    QSettingsClientIdStore clientIdStore(settings);
 
-    Tracker tracker;
-    tracker.setConsentState(ConsentState::Value::Granted);
-    tracker.setConsentStore(&externalStore);
-    tracker.setConsentState(ConsentState::Value::Denied);
-    tracker.setConsentStore(nullptr);
+    TrackerConfig config;
+    config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.siteId = 1;
 
-    QCOMPARE(tracker.consentState(), ConsentState::Value::Denied);
-}
+    {
+        Tracker tracker(config, consentStore, clientIdStore);
+        tracker.setConsentState(ConsentState::Value::Granted);
+        QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
+        QCOMPARE(tracker.clientId(), QStringLiteral("0123456789abcdef"));
 
-void TrackerTest::trackerResettingClientIdStorePreservesCurrentId() {
-    InMemoryClientIdStore externalStore;
+        tracker.setConsentState(ConsentState::Value::Denied);
+        QVERIFY(tracker.clientId().isEmpty());
+    }
 
-    Tracker tracker;
-    QVERIFY(tracker.setClientId(QStringLiteral("0123456789abcdef")));
-    tracker.setClientIdStore(&externalStore);
-    QVERIFY(tracker.setClientId(QStringLiteral("fedcba9876543210")));
-    tracker.setClientIdStore(nullptr);
+    QSettingsConsentStore freshConsentStore(settings);
+    QSettingsClientIdStore freshClientIdStore(settings);
+    Tracker freshTracker(config, freshConsentStore, freshClientIdStore);
 
-    QCOMPARE(tracker.clientId(), QStringLiteral("fedcba9876543210"));
+    QCOMPARE(freshTracker.consentState(), ConsentState::Value::Denied);
+    QVERIFY(freshTracker.clientId().isEmpty());
 }
 
 QTEST_MAIN(TrackerTest)

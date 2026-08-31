@@ -21,10 +21,14 @@
 #include <MatomoQt/DispatchResult.h>
 #include <MatomoQt/DispatchStatus.h>
 #include <MatomoQt/PrivacyMode.h>
+#include <MatomoQt/QSettingsClientIdStore.h>
+#include <MatomoQt/QSettingsConsentStore.h>
 #include <MatomoQt/RequestStatus.h>
 #include <MatomoQt/Tracker.h>
+#include <MatomoQt/TrackerConfig.h>
 
 #include <QtCore/QObject>
+#include <QtCore/QSettings>
 #include <QtCore/QUrl>
 #include <QtQml/qqmlregistration.h>
 #include <QtQml/QQmlEngine>
@@ -112,6 +116,7 @@ class MatomoTracker : public QObject {
         Q_INVOKABLE void denyConsent();
         Q_INVOKABLE void withdrawConsent();
         Q_INVOKABLE void resetClientId();
+        Q_INVOKABLE void resetCircuitBreaker();
 
     signals:
         void endpointChanged();
@@ -129,12 +134,16 @@ class MatomoTracker : public QObject {
         void dispatchFinished(DispatchStatus::Value status, int httpStatus, const QString &message);
 
     private:
-        void onTrackerConfigChanged();
+        void ensureTracker();
         void applyRequestResult(const RequestResult &result);
         void applyDispatchResult(const DispatchResult &result);
 
-        Tracker m_tracker;
-        TrackerConfig m_lastConfig;
+        TrackerConfig m_config;
+        QSettings m_settings;
+        QSettingsConsentStore m_consentStore;
+        QSettingsClientIdStore m_clientIdStore;
+        Tracker *m_tracker = nullptr;
+        bool m_enabled = true;
         RequestResult m_lastRequestResult;
         DispatchResult m_lastDispatchResult;
         bool m_hasDispatchResult = false;

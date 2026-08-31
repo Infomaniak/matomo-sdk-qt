@@ -18,10 +18,13 @@
 #pragma once
 
 #include <MatomoQt/Export.h>
+#include <MatomoQt/NetworkDispatcherConfig.h>
 #include <MatomoQt/PrivacyMode.h>
 
-#include <QtGlobal>
+#include <QtCore/QMap>
+#include <QtCore/QString>
 #include <QtCore/QUrl>
+#include <QtGlobal>
 
 namespace MatomoQt {
 
@@ -34,7 +37,24 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
         SiteId siteId = 0;
         PrivacyMode::Value privacyMode = PrivacyMode::Value::RequiresConsent;
 
-        /** Returns true when the endpoint and site ID can identify a Matomo site. */
+        /** Tracker-level custom dimensions merged into page-view and event
+         *  tracking requests (per-call dimensions take precedence on duplicate IDs).
+         *
+         *  Tracker-level dimensions are not sent with sendPing()
+         */
+        QMap<int, QString> customDimensions;
+
+        /** Full User-Agent sent as Matomo's `ua` Tracking HTTP API parameter.
+         *
+         *  Leave empty to omit the ua parameter.  The host application can
+         *  build this with UserAgentBuilder or supply its own.
+         */
+        QString userAgent;
+
+        /** Network dispatcher configuration (timeout, circuit breaker). */
+        NetworkDispatcherConfig networkDispatcherConfig;
+
+        /** Returns true when the endpoint, action URL base and site ID are usable. */
         [[nodiscard]] bool isValid() const;
 
         [[nodiscard]] bool operator==(const TrackerConfig &other) const = default;

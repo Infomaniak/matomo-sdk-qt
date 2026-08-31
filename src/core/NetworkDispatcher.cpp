@@ -90,6 +90,7 @@ void NetworkDispatcher::resetCircuitBreaker() {
 }
 
 bool NetworkDispatcher::dispatch(const QUrl &url) {
+    qCDebug(matomoSdk) << "dispatching request";
     if (m_circuitBreakerOpen) {
         qCDebug(matomoSdk) << "dispatch blocked by circuit breaker";
         emit dispatchFinished(makeResult(DispatchStatus::Value::CircuitBreakerOpen,

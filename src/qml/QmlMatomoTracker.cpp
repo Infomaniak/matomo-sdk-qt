@@ -20,6 +20,7 @@
 #include <MatomoQt/Event.h>
 #include <MatomoQt/PageView.h>
 
+#include <QtCore/QCoreApplication>
 #include <QtCore/QtGlobal>
 
 #include <optional>
@@ -34,83 +35,115 @@ MatomoTracker *MatomoTracker::create(QQmlEngine *engine, QJSEngine *) {
 
 MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
-    m_tracker(this),
-    m_lastConfig(m_tracker.config()) {
-
-    connect(&m_tracker, &Tracker::configChanged, this, &MatomoTracker::onTrackerConfigChanged);
-    connect(&m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
-    connect(&m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState::Value) {
-        emit consentStateChanged();
-    });
-    connect(&m_tracker, &Tracker::dispatchFinished, this, &MatomoTracker::applyDispatchResult);
+    m_settings(
+        QCoreApplication::organizationName().isEmpty()
+            ? QStringLiteral("MatomoQt")
+            : QCoreApplication::organizationName(),
+        QCoreApplication::applicationName().isEmpty()
+            ? QStringLiteral("MatomoTracker")
+            : QCoreApplication::applicationName()),
+    m_consentStore(&m_settings),
+    m_clientIdStore(&m_settings) {
 }
 
 QUrl MatomoTracker::endpoint() const {
-    return m_tracker.config().endpoint;
+    return m_config.endpoint;
 }
 
 void MatomoTracker::setEndpoint(const QUrl &endpoint) {
-    auto config = m_tracker.config();
-    if (config.endpoint == endpoint) {
+    if (m_config.endpoint == endpoint) {
         return;
     }
-    config.endpoint = endpoint;
-    m_tracker.setConfig(config);
+    if (m_tracker) {
+        qWarning("MatomoTracker: endpoint cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
+    m_config.endpoint = endpoint;
+    emit endpointChanged();
 }
 
 QUrl MatomoTracker::actionUrlBase() const {
-    return m_tracker.config().actionUrlBase;
+    return m_config.actionUrlBase;
 }
 
 void MatomoTracker::setActionUrlBase(const QUrl &actionUrlBase) {
-    auto config = m_tracker.config();
-    if (config.actionUrlBase == actionUrlBase) {
+    if (m_config.actionUrlBase == actionUrlBase) {
         return;
     }
-    config.actionUrlBase = actionUrlBase;
-    m_tracker.setConfig(config);
+    if (m_tracker) {
+        qWarning("MatomoTracker: actionUrlBase cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
+    m_config.actionUrlBase = actionUrlBase;
+    emit actionUrlBaseChanged();
 }
 
 int MatomoTracker::siteId() const {
-    return m_tracker.config().siteId;
+    return m_config.siteId;
 }
 
 void MatomoTracker::setSiteId(const int siteId) {
-    auto config = m_tracker.config();
-    if (config.siteId == siteId) {
+    if (m_config.siteId == siteId) {
         return;
     }
-    config.siteId = siteId;
-    m_tracker.setConfig(config);
+    if (m_tracker) {
+        qWarning("MatomoTracker: siteId cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
+    m_config.siteId = siteId;
+    emit siteIdChanged();
 }
 
 PrivacyMode::Value MatomoTracker::privacyMode() const {
-    return m_tracker.config().privacyMode;
+    return m_config.privacyMode;
 }
 
 void MatomoTracker::setPrivacyMode(const PrivacyMode::Value mode) {
-    auto config = m_tracker.config();
-    if (config.privacyMode == mode) {
+    if (m_config.privacyMode == mode) {
         return;
     }
-    config.privacyMode = mode;
-    m_tracker.setConfig(config);
+    if (m_tracker) {
+        qWarning("MatomoTracker: privacyMode cannot be changed after the tracker is initialized; ignoring.");
+        return;
+    }
+    m_config.privacyMode = mode;
+    emit privacyModeChanged();
 }
 
 bool MatomoTracker::isEnabled() const {
-    return m_tracker.isEnabled();
+    return m_enabled;
 }
 
 void MatomoTracker::setEnabled(const bool enabled) {
-    m_tracker.setEnabled(enabled);
+    if (m_enabled == enabled) {
+        return;
+    }
+    m_enabled = enabled;
+    if (m_tracker) {
+        m_tracker->setEnabled(m_enabled);
+    } else {
+        emit enabledChanged();
+    }
 }
 
 ConsentState::Value MatomoTracker::consentState() const {
-    return m_tracker.consentState();
+    return m_consentStore.consentState();
 }
 
 void MatomoTracker::setConsentState(const ConsentState::Value state) {
-    m_tracker.setConsentState(state);
+    const auto previousState = m_consentStore.consentState();
+    if (previousState == state) {
+        return;
+    }
+    if (m_tracker) {
+        m_tracker->setConsentState(state);
+        return;
+    }
+
+    m_consentStore.setConsentState(state);
+    if (m_consentStore.consentState() != previousState) {
+        emit consentStateChanged();
+    }
 }
 
 RequestStatus::Value MatomoTracker::lastRequestStatus() const {
@@ -138,7 +171,13 @@ QString MatomoTracker::lastDispatchMessage() const {
 }
 
 bool MatomoTracker::trackPageView(const QString &path, const QString &actionName) {
-    const auto result = m_tracker.trackPageView({
+    ensureTracker();
+    if (!m_tracker) {
+        applyRequestResult({.status = RequestStatus::Value::RequestInvalidConfig,
+                            .message = QStringLiteral("Tracker endpoint, action URL base and site ID are required.")});
+        return false;
+    }
+    const auto result = m_tracker->trackPageView({
         .path = path,
         .actionName = actionName,
     });
@@ -164,7 +203,13 @@ bool MatomoTracker::trackEvent(const QString &category,
         numericValue = parsed;
     }
 
-    const auto result = m_tracker.trackEvent({
+    ensureTracker();
+    if (!m_tracker) {
+        applyRequestResult({.status = RequestStatus::Value::RequestInvalidConfig,
+                            .message = QStringLiteral("Tracker endpoint, action URL base and site ID are required.")});
+        return false;
+    }
+    const auto result = m_tracker->trackEvent({
         .category = category,
         .action = action,
         .name = name,
@@ -175,7 +220,13 @@ bool MatomoTracker::trackEvent(const QString &category,
 }
 
 bool MatomoTracker::sendPing() {
-    const auto result = m_tracker.sendPing();
+    ensureTracker();
+    if (!m_tracker) {
+        applyRequestResult({.status = RequestStatus::Value::RequestInvalidConfig,
+                            .message = QStringLiteral("Tracker endpoint, action URL base and site ID are required.")});
+        return false;
+    }
+    const auto result = m_tracker->sendPing();
     applyRequestResult(result);
     return result.accepted();
 }
@@ -193,16 +244,32 @@ void MatomoTracker::withdrawConsent() {
 }
 
 void MatomoTracker::resetClientId() {
-    m_tracker.resetClientId();
+    if (m_tracker) {
+        m_tracker->resetClientId();
+    } else {
+        m_clientIdStore.clearClientId();
+    }
 }
 
-void MatomoTracker::onTrackerConfigChanged() {
-    const auto config = m_tracker.config();
-    if (m_lastConfig.endpoint != config.endpoint) emit endpointChanged();
-    if (m_lastConfig.actionUrlBase != config.actionUrlBase) emit actionUrlBaseChanged();
-    if (m_lastConfig.siteId != config.siteId) emit siteIdChanged();
-    if (m_lastConfig.privacyMode != config.privacyMode) emit privacyModeChanged();
-    m_lastConfig = config;
+void MatomoTracker::resetCircuitBreaker() {
+    if (m_tracker) {
+        m_tracker->resetCircuitBreaker();
+    }
+}
+
+void MatomoTracker::ensureTracker() {
+    if (m_tracker || !m_config.isValid()) {
+        return;
+    }
+
+    m_tracker = new Tracker(m_config, m_consentStore, m_clientIdStore, this);
+    m_tracker->setEnabled(m_enabled);
+
+    connect(m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
+    connect(m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState::Value) {
+        emit consentStateChanged();
+    });
+    connect(m_tracker, &Tracker::dispatchFinished, this, &MatomoTracker::applyDispatchResult);
 }
 
 void MatomoTracker::applyRequestResult(const RequestResult &result) {

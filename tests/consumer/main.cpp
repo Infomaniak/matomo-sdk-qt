@@ -16,6 +16,8 @@
  */
 
 #include <MatomoQt/Event.h>
+#include <MatomoQt/InMemoryClientIdStore.h>
+#include <MatomoQt/InMemoryConsentStore.h>
 #include <MatomoQt/PageView.h>
 #include <MatomoQt/Tracker.h>
 #include <MatomoQt/TrackerConfig.h>
@@ -31,7 +33,9 @@ int main() {
     config.siteId = 1;
     config.privacyMode = MatomoQt::PrivacyMode::Value::ConsentExemptWithOptOut;
 
-    MatomoQt::Tracker tracker(config);
+    MatomoQt::InMemoryConsentStore consentStore;
+    MatomoQt::InMemoryClientIdStore clientIdStore;
+    MatomoQt::Tracker tracker(config, consentStore, clientIdStore);
     tracker.setConsentState(MatomoQt::ConsentState::Value::Granted);
 
     const auto pageViewResult = tracker.trackPageView({.path = QStringLiteral("preferences")});

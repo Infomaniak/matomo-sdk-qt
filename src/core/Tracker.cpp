@@ -57,30 +57,26 @@ bool isValidClientId(const QString &clientId) {
 
 } // namespace
 
-Tracker::Tracker(QObject *parent) :
-    QObject(parent),
-    m_dispatcher(new NetworkDispatcher(this)),
-    m_requestBuilder(m_config) {
-
-    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+Tracker::Tracker(TrackerConfig config, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent) :
+    Tracker(std::move(config), nullptr, consentStore, clientIdStore, parent) {
 }
 
-Tracker::Tracker(TrackerConfig config, QObject *parent) :
+Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent) :
     QObject(parent),
     m_config(std::move(config)),
-    m_dispatcher(new NetworkDispatcher(this)),
-    m_requestBuilder(m_config) {
-
-    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
-}
-
-Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, QObject *parent) :
-    QObject(parent),
-    m_config(std::move(config)),
+    m_consentStore(consentStore),
+    m_clientIdStore(clientIdStore),
     m_dispatcher(new NetworkDispatcher(nam, this)),
     m_requestBuilder(m_config) {
 
+    m_dispatcher->setConfig(m_config.networkDispatcherConfig);
+
     connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+
+    if (m_consentStore.consentState() == ConsentState::Value::Denied
+        || m_consentStore.consentState() == ConsentState::Value::Withdrawn) {
+        clearVisitorIdentity();
+    }
 }
 
 Tracker::~Tracker() = default;
@@ -89,33 +85,24 @@ TrackerConfig Tracker::config() const {
     return m_config;
 }
 
-void Tracker::setConfig(const TrackerConfig &config) {
-    if (m_config == config) {
-        return;
-    }
-
-    m_config = config;
-    m_requestBuilder.setConfig(m_config);
-    emit configChanged();
-}
 
 ConsentState::Value Tracker::consentState() const {
-    return m_consentStore->consentState();
+    return m_consentStore.consentState();
 }
 
 void Tracker::setConsentState(const ConsentState::Value state) {
-    const auto previousState = m_consentStore->consentState();
+    const auto previousState = m_consentStore.consentState();
     if (previousState == state) {
         return;
     }
 
-    m_consentStore->setConsentState(state);
+    m_consentStore.setConsentState(state);
 
     if (state == ConsentState::Value::Denied || state == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
 
-    if (const auto persistedState = m_consentStore->consentState(); persistedState != previousState) {
+    if (const auto persistedState = m_consentStore.consentState(); persistedState != previousState) {
         emit consentStateChanged(persistedState);
     }
 }
@@ -124,7 +111,7 @@ bool Tracker::isEnabled() const {
     return m_enabled;
 }
 
-void Tracker::setEnabled(bool enabled) {
+void Tracker::setEnabled(const bool enabled) {
     if (m_enabled == enabled) {
         return;
     }
@@ -133,32 +120,8 @@ void Tracker::setEnabled(bool enabled) {
     emit enabledChanged(m_enabled);
 }
 
-void Tracker::setConsentStore(ConsentStore *store) {
-    const auto oldState = m_consentStore->consentState();
-    m_defaultConsentStore.setConsentState(m_consentStore->consentState());
-    m_consentStore = store ? store : &m_defaultConsentStore;
-
-    const auto newState = m_consentStore->consentState();
-    if (newState == ConsentState::Value::Denied || newState == ConsentState::Value::Withdrawn) {
-        clearVisitorIdentity();
-    }
-    if (oldState != newState) {
-        emit consentStateChanged(newState);
-    }
-}
-
-void Tracker::setClientIdStore(ClientIdStore *store) {
-    m_defaultClientIdStore.setClientId(m_clientIdStore->clientId());
-    m_clientIdStore = store ? store : &m_defaultClientIdStore;
-
-    if (m_consentStore->consentState() == ConsentState::Value::Denied
-        || m_consentStore->consentState() == ConsentState::Value::Withdrawn) {
-        clearVisitorIdentity();
-    }
-}
-
 QString Tracker::clientId() const {
-    return m_clientIdStore->clientId();
+    return m_clientIdStore.clientId();
 }
 
 bool Tracker::setClientId(const QString &clientId) const {
@@ -166,7 +129,7 @@ bool Tracker::setClientId(const QString &clientId) const {
         return false;
     }
 
-    m_clientIdStore->setClientId(clientId);
+    m_clientIdStore.setClientId(clientId);
     return true;
 }
 
@@ -174,52 +137,16 @@ void Tracker::resetClientId() {
     clearVisitorIdentity();
 }
 
-void Tracker::setCustomDimension(const int id, const QString &value) {
-    if (value.isEmpty()) {
-        m_customDimensions.remove(id);
-    } else {
-        m_customDimensions[id] = value;
-    }
-}
-
-void Tracker::clearCustomDimension(const int id) {
-    m_customDimensions.remove(id);
-}
-
 void Tracker::forceNewVisit() {
     m_forceNewVisit = true;
 }
 
+void Tracker::resetCircuitBreaker() {
+    m_dispatcher->resetCircuitBreaker();
+}
+
 TrackerStats Tracker::stats() const {
     return m_stats;
-}
-
-void Tracker::resetStats() {
-    m_stats = {};
-    emit statsChanged();
-}
-
-void Tracker::setNetworkAccessManager(QNetworkAccessManager *nam) {
-    const auto config = m_dispatcher->config();
-    const bool breakerOpen = m_dispatcher->isCircuitBreakerOpen();
-
-    delete m_dispatcher;
-    m_dispatcher = new NetworkDispatcher(nam, this);
-    m_dispatcher->setConfig(config);
-
-    if (breakerOpen) {
-        m_dispatcher->resetCircuitBreaker();
-    }
-
-    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
-}
-
-void Tracker::setUserAgent(const QString &userAgent) {
-    m_userAgent = userAgent;
-}
-
-void Tracker::setNetworkDispatcherConfig(const NetworkDispatcherConfig &config) {
-    m_dispatcher->setConfig(config);
 }
 
 RequestResult Tracker::trackPageView(const PageView &pageView) {
@@ -336,10 +263,11 @@ RequestResult Tracker::validateTrackingCall() const {
     }
 
     if (!m_config.isValid()) {
-        return result(RequestStatus::Value::RequestInvalidConfig, QStringLiteral("Tracker endpoint and site ID are required."));
+        return result(RequestStatus::Value::RequestInvalidConfig,
+                      QStringLiteral("Tracker endpoint, action URL base and site ID are required."));
     }
 
-    if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentStore->consentState())) {
+    if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentStore.consentState())) {
         return result(RequestStatus::Value::RequestBlockedByPrivacy, QStringLiteral("Tracking blocked by privacy settings."));
     }
 
@@ -347,21 +275,21 @@ RequestResult Tracker::validateTrackingCall() const {
 }
 
 void Tracker::clearVisitorIdentity() {
-    m_clientIdStore->clearClientId();
+    m_clientIdStore.clearClientId();
     m_currentPageViewId.clear();
     m_lastPageViewPath.clear();
 }
 
-void Tracker::ensureClientId() {
-    if (m_clientIdStore->clientId().isEmpty()) {
-        m_clientIdStore->setClientId(generateClientId());
+void Tracker::ensureClientId() const {
+    if (m_clientIdStore.clientId().isEmpty()) {
+        m_clientIdStore.setClientId(generateClientId());
     }
 }
 
 RequestBuildOptions Tracker::buildOptions() const {
     RequestBuildOptions options;
-    options.clientId = m_clientIdStore->clientId();
-    options.userAgent = m_userAgent;
+    options.clientId = m_clientIdStore.clientId();
+    options.userAgent = m_config.userAgent;
     options.language = QLocale().name();
     options.screenResolution = {};
     return options;
@@ -376,7 +304,7 @@ QList<CustomDimension> Tracker::mergeDimensions(const QList<CustomDimension> &ca
         usedIds.insert(dim.id);
     }
 
-    for (auto it = m_customDimensions.constBegin(); it != m_customDimensions.constEnd(); ++it) {
+    for (auto it = m_config.customDimensions.constBegin(); it != m_config.customDimensions.constEnd(); ++it) {
         if (!usedIds.contains(it.key())) {
             merged.append({.id = it.key(), .value = it.value()});
         }
