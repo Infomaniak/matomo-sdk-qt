@@ -17,6 +17,7 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
+#include <QtCore/QSettings>
 #include <QtCore/QUrlQuery>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
@@ -26,6 +27,7 @@
 #include <QtTest/QtTest>
 
 #include <MatomoQt/DispatchResult.h>
+#include <MatomoQt/RequestStatus.h>
 
 #include <memory>
 
@@ -121,11 +123,34 @@ class TestHttpServer : public QObject {
         QString m_lastRequestPath;
 };
 
+void addQmlImportPaths(QQmlEngine *engine) {
+    const QString moduleOutputDir = QStringLiteral(MATOMOQT_QML_IMPORT_PATH);
+    QVERIFY2(!moduleOutputDir.isEmpty(), "MATOMOQT_QML_IMPORT_PATH is empty.");
+    engine->addImportPath(moduleOutputDir);
+
+    const QFileInfo moduleOutputInfo(moduleOutputDir);
+    if (moduleOutputInfo.fileName() == QStringLiteral("MatomoQt")) {
+        engine->addImportPath(moduleOutputInfo.absolutePath());
+    } else {
+        engine->addImportPath(QDir(moduleOutputDir).filePath(QStringLiteral("..")));
+    }
+}
+
+QObject *matomoTracker(QQmlEngine *engine) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    return engine->singletonInstance<QObject *>("MatomoQt", "MatomoTracker");
+#else
+    const int typeId = qmlTypeId("MatomoQt", 1, 0, "MatomoTracker");
+    return engine->singletonInstance<QObject *>(typeId);
+#endif
+}
+
 class QmlModuleIntegrationTest : public QObject {
         Q_OBJECT
 
     private slots:
         void qmlModuleImportsAndRespectsConsentGate();
+        void qmlTrackerRecoversFromIncompleteConfig();
 };
 
 void QmlModuleIntegrationTest::qmlModuleImportsAndRespectsConsentGate() {
@@ -135,21 +160,10 @@ void QmlModuleIntegrationTest::qmlModuleImportsAndRespectsConsentGate() {
     QCoreApplication::setOrganizationName(QStringLiteral("MatomoQtTest"));
     QCoreApplication::setApplicationName(QStringLiteral("QmlModuleTest"));
 
-    QSettings::defaultFormat(); // ensure format is set
     QSettings(QStringLiteral("MatomoQtTest"), QStringLiteral("QmlModuleTest")).remove(QString());
 
     QQmlEngine engine;
-
-    const QString moduleOutputDir = QStringLiteral(MATOMOQT_QML_IMPORT_PATH);
-    QVERIFY2(!moduleOutputDir.isEmpty(), "MATOMOQT_QML_IMPORT_PATH is empty.");
-    engine.addImportPath(moduleOutputDir);
-
-    const QFileInfo moduleOutputInfo(moduleOutputDir);
-    if (moduleOutputInfo.fileName() == QStringLiteral("MatomoQt")) {
-        engine.addImportPath(moduleOutputInfo.absolutePath());
-    } else {
-        engine.addImportPath(QDir(moduleOutputDir).filePath(QStringLiteral("..")));
-    }
+    addQmlImportPaths(&engine);
 
     const QString qmlSource = QStringLiteral(R"(
 import QtQml
@@ -190,12 +204,7 @@ QtObject {
     std::unique_ptr<QObject> root(component.create());
     QVERIFY2(root != nullptr, qPrintable(component.errorString()));
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    QObject *tracker = engine.singletonInstance<QObject *>("MatomoQt", "MatomoTracker");
-#else
-    int typeId = qmlTypeId("MatomoQt", 1, 0, "MatomoTracker");
-    QObject *tracker = engine.singletonInstance<QObject *>(typeId);
-#endif
+    QObject *tracker = matomoTracker(&engine);
     QVERIFY(tracker != nullptr);
 
     bool acceptedBeforeConsent = false;
@@ -207,7 +216,17 @@ QtObject {
     QVERIFY(!acceptedBeforeConsent);
     QCOMPARE(server.requestCount(), 0);
 
+    QSignalSpy consentSpy(tracker, SIGNAL(consentStateChanged()));
     QVERIFY(QMetaObject::invokeMethod(tracker, "grantConsent"));
+    QCOMPARE(consentSpy.count(), 1);
+
+    const QUrl configuredEndpoint = tracker->property("endpoint").toUrl();
+    QSignalSpy endpointSpy(tracker, SIGNAL(endpointChanged()));
+    QTest::ignoreMessage(QtWarningMsg,
+                         "MatomoTracker: endpoint cannot be changed after the tracker is initialized; ignoring.");
+    QVERIFY(tracker->setProperty("endpoint", QUrl(QStringLiteral("https://other.example.com/matomo.php"))));
+    QCOMPARE(tracker->property("endpoint").toUrl(), configuredEndpoint);
+    QCOMPARE(endpointSpy.count(), 0);
 
     bool acceptedAfterConsent = false;
     QVERIFY(QMetaObject::invokeMethod(tracker,
@@ -253,6 +272,54 @@ QtObject {
              static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
     QCOMPARE(tracker->property("lastDispatchHttpStatus").toInt(), 500);
     QVERIFY(!tracker->property("lastDispatchMessage").toString().isEmpty());
+}
+
+void QmlModuleIntegrationTest::qmlTrackerRecoversFromIncompleteConfig() {
+    TestHttpServer server;
+    QVERIFY(server.start());
+
+    QCoreApplication::setOrganizationName(QStringLiteral("MatomoQtTest"));
+    QCoreApplication::setApplicationName(QStringLiteral("QmlRecoveryTest"));
+    QSettings(QStringLiteral("MatomoQtTest"), QStringLiteral("QmlRecoveryTest")).remove(QString());
+
+    QQmlEngine engine;
+    addQmlImportPaths(&engine);
+
+    QQmlComponent component(&engine);
+    component.setData("import QtQml\nimport MatomoQt 1.0\nQtObject {}\n",
+                      QUrl(QStringLiteral("inmemory:/tst_qml_recovery.qml")));
+    QTRY_VERIFY2(component.isReady() || component.isError(), qPrintable(component.errorString()));
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+    std::unique_ptr<QObject> root(component.create());
+    QVERIFY2(root != nullptr, qPrintable(component.errorString()));
+
+    QObject *tracker = matomoTracker(&engine);
+    QVERIFY(tracker != nullptr);
+    QVERIFY(tracker->setProperty("endpoint", server.url()));
+    QVERIFY(tracker->setProperty("siteId", 1));
+
+    bool accepted = true;
+    QVERIFY(QMetaObject::invokeMethod(tracker,
+                                      "trackPageView",
+                                      Q_RETURN_ARG(bool, accepted),
+                                      Q_ARG(QString, QStringLiteral("settings")),
+                                      Q_ARG(QString, QStringLiteral("Settings"))));
+    QVERIFY(!accepted);
+    QCOMPARE(tracker->property("lastRequestStatus").toInt(),
+             static_cast<int>(MatomoQt::RequestStatus::Value::RequestInvalidConfig));
+    QCOMPARE(server.requestCount(), 0);
+
+    QVERIFY(tracker->setProperty("actionUrlBase", QUrl(QStringLiteral("app://qml-recovery-test/"))));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "grantConsent"));
+    QVERIFY(QMetaObject::invokeMethod(tracker,
+                                      "trackEvent",
+                                      Q_RETURN_ARG(bool, accepted),
+                                      Q_ARG(QString, QStringLiteral("preferences")),
+                                      Q_ARG(QString, QStringLiteral("recover")),
+                                      Q_ARG(QString, QString()),
+                                      Q_ARG(QVariant, QVariant())));
+    QVERIFY2(accepted, qPrintable(tracker->property("lastRequestMessage").toString()));
+    QTRY_COMPARE_WITH_TIMEOUT(server.requestCount(), 1, 5000);
 }
 
 } // namespace

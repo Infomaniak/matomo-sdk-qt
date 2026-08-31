@@ -98,6 +98,9 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         /** Forces new_visit=1 on the next dispatched request. */
         void forceNewVisit();
 
+        /** Closes the circuit breaker and clears its consecutive failure count. */
+        void resetCircuitBreaker();
+
         /** Returns the current runtime statistics. */
         [[nodiscard]] TrackerStats stats() const;
 

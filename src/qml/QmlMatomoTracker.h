@@ -116,6 +116,7 @@ class MatomoTracker : public QObject {
         Q_INVOKABLE void denyConsent();
         Q_INVOKABLE void withdrawConsent();
         Q_INVOKABLE void resetClientId();
+        Q_INVOKABLE void resetCircuitBreaker();
 
     signals:
         void endpointChanged();

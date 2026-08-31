@@ -43,7 +43,7 @@ class TrackerTest : public QObject {
 
     private slots:
         static void defaultConfigIsPrivacySafe();
-        static void configValidityRequiresEndpointAndSiteId();
+        static void configValidityRequiresEndpointActionUrlAndSiteId();
 
         static void payloadValidityUsesRequiredFields();
         static void trackerDoesNotAcceptWithoutConsentByDefault();
@@ -101,7 +101,7 @@ void TrackerTest::defaultConfigIsPrivacySafe() {
     QVERIFY(tracker.isEnabled());
 }
 
-void TrackerTest::configValidityRequiresEndpointAndSiteId() {
+void TrackerTest::configValidityRequiresEndpointActionUrlAndSiteId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("matomo.example.com/matomo.php"));
 
@@ -111,7 +111,16 @@ void TrackerTest::configValidityRequiresEndpointAndSiteId() {
     config.endpoint = QUrl(QStringLiteral("file:///tmp/matomo.php"));
     QVERIFY(!config.isValid());
 
+    config.endpoint = QUrl(QStringLiteral("https:///matomo.php"));
+    QVERIFY(!config.isValid());
+
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    QVERIFY(!config.isValid());
+
+    config.actionUrlBase = QUrl(QStringLiteral("settings"));
+    QVERIFY(!config.isValid());
+
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     QVERIFY(config.isValid());
 }
 
@@ -166,6 +175,7 @@ void TrackerTest::payloadValidityUsesRequiredFields() {
 void TrackerTest::trackerDoesNotAcceptWithoutConsentByDefault() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     InMemoryConsentStore consentStore;
@@ -411,6 +421,7 @@ void TrackerTest::trackerRejectsInvalidClientId() {
 void TrackerTest::trackerConstructsWithDeniedStoreClearsClientId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     InMemoryClientIdStore idStore;
@@ -428,6 +439,7 @@ void TrackerTest::trackerConstructsWithDeniedStoreClearsClientId() {
 void TrackerTest::trackerConstructsWithWithdrawnStoreClearsClientId() {
     TrackerConfig config;
     config.endpoint = QUrl(QStringLiteral("https://matomo.example.com/matomo.php"));
+    config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
     config.siteId = 1;
 
     InMemoryClientIdStore idStore;

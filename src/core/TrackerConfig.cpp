@@ -21,8 +21,15 @@ namespace MatomoQt {
 
 bool TrackerConfig::isValid() const {
     const auto scheme = endpoint.scheme();
-    return endpoint.isValid() && !endpoint.isEmpty() && (scheme == QStringLiteral("http") || scheme == QStringLiteral("https")) &&
-           siteId > 0;
+    const bool validEndpoint = endpoint.isValid()
+                               && !endpoint.isEmpty()
+                               && !endpoint.isRelative()
+                               && !endpoint.host().isEmpty()
+                               && (scheme == QStringLiteral("http") || scheme == QStringLiteral("https"));
+    const bool validActionUrlBase = actionUrlBase.isValid()
+                                    && !actionUrlBase.isEmpty()
+                                    && !actionUrlBase.isRelative();
+    return validEndpoint && validActionUrlBase && siteId > 0;
 }
 
 } // namespace MatomoQt

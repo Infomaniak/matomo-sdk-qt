@@ -141,6 +141,10 @@ void Tracker::forceNewVisit() {
     m_forceNewVisit = true;
 }
 
+void Tracker::resetCircuitBreaker() {
+    m_dispatcher->resetCircuitBreaker();
+}
+
 TrackerStats Tracker::stats() const {
     return m_stats;
 }
@@ -259,7 +263,8 @@ RequestResult Tracker::validateTrackingCall() const {
     }
 
     if (!m_config.isValid()) {
-        return result(RequestStatus::Value::RequestInvalidConfig, QStringLiteral("Tracker endpoint and site ID are required."));
+        return result(RequestStatus::Value::RequestInvalidConfig,
+                      QStringLiteral("Tracker endpoint, action URL base and site ID are required."));
     }
 
     if (!PrivacyController::isTrackingAllowed(m_config.privacyMode, m_consentStore.consentState())) {

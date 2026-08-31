@@ -54,7 +54,7 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
         /** Network dispatcher configuration (timeout, circuit breaker). */
         NetworkDispatcherConfig networkDispatcherConfig;
 
-        /** Returns true when the endpoint and site ID can identify a Matomo site. */
+        /** Returns true when the endpoint, action URL base and site ID are usable. */
         [[nodiscard]] bool isValid() const;
 
         [[nodiscard]] bool operator==(const TrackerConfig &other) const = default;
