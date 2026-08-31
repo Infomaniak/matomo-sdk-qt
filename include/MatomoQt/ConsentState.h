@@ -19,8 +19,7 @@
 
 #include <MatomoQt/Export.h>
 
-#include <QtCore/QString>
-#include <QtCore/qtmetamacros.h>
+#include <QtCore/QMetaObject>
 
 namespace MatomoQt::ConsentState {
 
@@ -34,19 +33,5 @@ enum class Value {
     Withdrawn,
 };
 Q_ENUM_NS(Value)
-
-[[nodiscard]] inline QString enumToString(Value state) {
-    switch (state) {
-        case Value::Unknown:
-            return QStringLiteral("Unknown");
-        case Value::Granted:
-            return QStringLiteral("Granted");
-        case Value::Denied:
-            return QStringLiteral("Denied");
-        case Value::Withdrawn:
-            return QStringLiteral("Withdrawn");
-    }
-    return QStringLiteral("Unknown");
-}
 
 } // namespace MatomoQt::ConsentState

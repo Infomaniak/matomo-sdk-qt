@@ -19,8 +19,7 @@
 
 #include <MatomoQt/Export.h>
 
-#include <QtCore/QString>
-#include <QtCore/qtmetamacros.h>
+#include <QtCore/QMetaObject>
 
 namespace MatomoQt::DispatchStatus {
 
@@ -35,21 +34,5 @@ enum class Value {
     CircuitBreakerOpen,
 };
 Q_ENUM_NS(Value)
-
-[[nodiscard]] inline QString enumToString(Value status) {
-    switch (status) {
-        case Value::Success:
-            return QStringLiteral("Success");
-        case Value::Timeout:
-            return QStringLiteral("Timeout");
-        case Value::NetworkError:
-            return QStringLiteral("NetworkError");
-        case Value::SslError:
-            return QStringLiteral("SslError");
-        case Value::CircuitBreakerOpen:
-            return QStringLiteral("CircuitBreakerOpen");
-    }
-    return QStringLiteral("NetworkError");
-}
 
 } // namespace MatomoQt::DispatchStatus

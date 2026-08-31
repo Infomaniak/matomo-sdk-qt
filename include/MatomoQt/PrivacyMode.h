@@ -19,8 +19,7 @@
 
 #include <MatomoQt/Export.h>
 
-#include <QtCore/QString>
-#include <QtCore/qtmetamacros.h>
+#include <QtCore/QMetaObject>
 
 namespace MatomoQt::PrivacyMode {
 
@@ -33,17 +32,5 @@ enum class Value {
     ConsentExemptWithOptOut,
 };
 Q_ENUM_NS(Value)
-
-[[nodiscard]] inline QString enumToString(Value mode) {
-    switch (mode) {
-        case Value::Disabled:
-            return QStringLiteral("Disabled");
-        case Value::RequiresConsent:
-            return QStringLiteral("RequiresConsent");
-        case Value::ConsentExemptWithOptOut:
-            return QStringLiteral("ConsentExemptWithOptOut");
-    }
-    return QStringLiteral("Disabled");
-}
 
 } // namespace MatomoQt::PrivacyMode
