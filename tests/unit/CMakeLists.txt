@@ -58,6 +58,8 @@ target_link_libraries(tst_useragentbuilder
         Qt6::Test
 )
 
+target_include_directories(tst_useragentbuilder PRIVATE "${PROJECT_SOURCE_DIR}/src/core")
+
 add_test(NAME tst_useragentbuilder COMMAND tst_useragentbuilder)
 
 add_executable(tst_public_api tst_public_api.cpp)

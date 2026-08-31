@@ -18,6 +18,9 @@
 #include <MatomoQt/RequestBuilder.h>
 #include <MatomoQt/UserAgentBuilder.h>
 
+#include "UserAgentBuilder_p.h"
+
+#include <QtCore/QBuffer>
 #include <QtCore/QUrlQuery>
 #include <QtTest/QtTest>
 
@@ -49,6 +52,7 @@ class UserAgentBuilderTest : public QObject {
         static void mapsQtCpuArchitecture_data();
         static void mapsQtCpuArchitecture();
         static void currentDesktopInfoIncludesApplicationAndQtVersion();
+        static void parsesEscapedLinuxDistroName();
         static void requestBuilderSendsBuiltUserAgent();
 };
 
@@ -295,6 +299,14 @@ void UserAgentBuilderTest::currentDesktopInfoIncludesApplicationAndQtVersion() {
     QCOMPARE(info.productName, QStringLiteral("kDrive"));
     QCOMPARE(info.productVersion, QStringLiteral("4.0.1"));
     QCOMPARE(info.qtVersion, QStringLiteral(QT_VERSION_STR));
+}
+
+void UserAgentBuilderTest::parsesEscapedLinuxDistroName() {
+    QBuffer osRelease;
+    osRelease.setData("ID=example\nNAME=\"Example \\\"Linux\\\" \\\\ Edition\"\n");
+    QVERIFY(osRelease.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    QCOMPARE(Internal::linuxDistroFromOsRelease(osRelease), QStringLiteral("Example \"Linux\" \\ Edition"));
 }
 
 void UserAgentBuilderTest::requestBuilderSendsBuiltUserAgent() {

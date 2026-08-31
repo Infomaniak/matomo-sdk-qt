@@ -17,6 +17,8 @@
 
 #include <MatomoQt/UserAgentBuilder.h>
 
+#include "UserAgentBuilder_p.h"
+
 #include <QtCore/QFile>
 #include <QtCore/QOperatingSystemVersion>
 #include <QtCore/QStringList>
@@ -208,7 +210,51 @@ QString currentOsVersion() {
     return parts.join(QLatin1Char('.'));
 }
 
+QString unquoteOsReleaseValue(QString value) {
+    value = value.trimmed();
+    if (value.size() >= 2) {
+        const QChar quote = value.front();
+        if ((quote == QLatin1Char('"') || quote == QLatin1Char('\'')) && value.back() == quote) {
+            value = value.mid(1, value.size() - 2);
+        }
+    }
+
+    QString unescaped;
+    unescaped.reserve(value.size());
+    bool escaping = false;
+    for (const QChar character: value) {
+        if (escaping) {
+            unescaped.append(character);
+            escaping = false;
+        } else if (character == QLatin1Char('\\')) {
+            escaping = true;
+        } else {
+            unescaped.append(character);
+        }
+    }
+    if (escaping) {
+        unescaped.append(QLatin1Char('\\'));
+    }
+
+    return unescaped.trimmed();
+}
+
 } // namespace
+
+namespace Internal {
+
+QString linuxDistroFromOsRelease(QIODevice &device) {
+    QTextStream stream(&device);
+    for (QString line = stream.readLine(); !line.isNull(); line = stream.readLine()) {
+        if (line.startsWith(QStringLiteral("NAME="))) {
+            return unquoteOsReleaseValue(line.mid(5));
+        }
+    }
+
+    return {};
+}
+
+} // namespace Internal
 
 UserAgentArchitecture UserAgentBuilder::architectureFromQt(QString architecture) {
     architecture = architecture.toLower();
@@ -267,20 +313,7 @@ QString UserAgentBuilder::currentLinuxDistro() {
         return {};
     }
 
-    QTextStream stream(&file);
-    for (QString line = stream.readLine(); !line.isNull(); line = stream.readLine()) {
-        if (!line.startsWith(QStringLiteral("NAME="))) {
-            continue;
-        }
-
-        QString value = line.mid(5).trimmed();
-        if (value.size() >= 2 && value.front() == QLatin1Char('"') && value.back() == QLatin1Char('"')) {
-            value = value.mid(1, value.size() - 2);
-        }
-        return value.trimmed();
-    }
-
-    return {};
+    return Internal::linuxDistroFromOsRelease(file);
 #endif
 }
 
