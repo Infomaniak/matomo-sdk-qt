@@ -10,10 +10,9 @@
 
 C++ Qt SDK for the Matomo Tracking HTTP API.
 
-> Status: early development. The SDK exposes the C++ core target and can build
-> deterministic Matomo Tracking HTTP API URLs and send them over HTTP via
-> `NetworkDispatcher`. QML support, examples and packaging are still in
-> progress.
+> Status: early development. The SDK exposes C++ and QML targets, sends
+> Matomo Tracking HTTP API requests asynchronously and includes a runnable QML
+> example. The public API may still evolve before the first stable release.
 
 ## Project Context
 
@@ -29,7 +28,7 @@ be defined by the host application, not by this library.
 ## Goals
 
 - Provide a Qt-native SDK for Matomo tracking.
-- Support C++ applications first, with QML support planned.
+- Support both C++ and QML applications.
 - Keep the core library independent from any product-specific taxonomy.
 - Make privacy, consent, GDPR and Swiss FADP/nLPD-oriented integration explicit
   in the public API.
@@ -38,7 +37,8 @@ be defined by the host application, not by this library.
 
 ## Scope
 
-The repository currently builds the `MatomoQt::Core` target. It depends on:
+The repository builds the `MatomoQt::Core` target and can optionally build the
+`MatomoQt::Qml` module. The core target depends on:
 
 - `Qt6::Core`
 - `Qt6::Network`
@@ -98,8 +98,6 @@ Useful options:
 -DMATOMOQT_WARNINGS_AS_ERRORS=ON
 ```
 
-Some options are already available before the corresponding feature is complete.
-
 ## CMake Consumption
 
 As a subdirectory:
@@ -115,6 +113,8 @@ After installation:
 find_package(MatomoQt CONFIG REQUIRED)
 target_link_libraries(my_app PRIVATE MatomoQt::Core)
 ```
+
+QML applications can link `MatomoQt::Qml` and import `MatomoQt` from QML.
 
 ## Minimal C++ Example
 
@@ -156,6 +156,54 @@ if (requestResult.accepted()) {
 ```
 
 This builds the tracking URL only.
+
+## QML Example
+
+A runnable QML example lives in `examples/qml-basic`. It shows a minimal
+`MatomoTracker` singleton wired to consent buttons and tracking calls; no
+tracking is sent before the user explicitly grants consent.
+
+```sh
+cmake -S . -B build -DMATOMOQT_BUILD_QML=ON -DMATOMOQT_BUILD_EXAMPLES=ON
+cmake --build build
+./build/examples/qml-basic/matomoqt-example-qml-basic
+```
+
+By default the example points at `http://127.0.0.1:8080/matomo.php`; edit
+`examples/qml-basic/qml/Main.qml` to point it at your own Matomo instance
+(e.g. a local Matomo `docker-compose.yml` for testing,
+or a real server) to see tracked hits.
+
+`MatomoTracker` is exposed as a QML singleton, so you configure and call it
+directly by type name rather than instantiating it. The `PrivacyMode`,
+`ConsentState`, `RequestStatus` and `DispatchStatus` enums are exported as QML
+namespaces. Tracking methods report local acceptance immediately; use
+`MatomoTracker.dispatchFinished` for the eventual network result.
+
+```qml
+import QtQuick
+import QtQuick.Controls
+import MatomoQt
+
+Button {
+    text: qsTr("Grant consent and track")
+
+    Component.onCompleted: {
+        // MatomoTracker is a singleton — configure it directly.
+        MatomoTracker.endpoint = "https://matomo.example.com/matomo.php"
+        MatomoTracker.actionUrlBase = "app://my-app/"
+        MatomoTracker.siteId = 1
+        MatomoTracker.privacyMode = PrivacyMode.RequiresConsent
+    }
+
+    onClicked: {
+        // Only after explicit user consent:
+        MatomoTracker.grantConsent()
+        MatomoTracker.trackPageView("/settings", "Settings")
+        MatomoTracker.trackEvent("preferences", "click", "saveButton", 1)
+    }
+}
+```
 
 ## Privacy Model
 
