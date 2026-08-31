@@ -89,19 +89,19 @@ void NetworkDispatcher::resetCircuitBreaker() {
     setOpen(false);
 }
 
-void NetworkDispatcher::dispatch(const QUrl &url) {
+bool NetworkDispatcher::dispatch(const QUrl &url) {
     if (m_circuitBreakerOpen) {
         qCDebug(matomoSdk) << "dispatch blocked by circuit breaker";
         emit dispatchFinished(makeResult(DispatchResult::Status::CircuitBreakerOpen,
                                           QStringLiteral("Circuit breaker is open.")));
-        return;
+        return false;
     }
 
     if (!url.isValid() || url.isEmpty()) {
         qCDebug(matomoSdk) << "dispatch rejected: invalid URL";
         emit dispatchFinished(makeResult(DispatchResult::Status::NetworkError,
                                           QStringLiteral("Tracking URL is invalid.")));
-        return;
+        return false;
     }
 
     const QUrl dispatchUrl = addCacheBuster(url);
@@ -130,6 +130,8 @@ void NetworkDispatcher::dispatch(const QUrl &url) {
         // SSL errors are never ignored. The reply will fail when finished.
         qCDebug(matomoSdk) << "SSL errors detected on reply";
     });
+
+    return true;
 }
 
 void NetworkDispatcher::handleReplyFinished(QNetworkReply *reply) {

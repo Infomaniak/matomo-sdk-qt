@@ -16,7 +16,19 @@
  */
 
 #include <MatomoQt/Tracker.h>
+
+#include <MatomoQt/CustomDimension.h>
+#include <MatomoQt/Logging.h>
 #include <MatomoQt/PrivacyController.h>
+#include <MatomoQt/RequestBuildOptions.h>
+#include <MatomoQt/RequestBuildResult.h>
+#include <MatomoQt/TrackingRequest.h>
+
+#include <QtCore/QLocale>
+#include <QtCore/QRandomGenerator>
+#include <QtCore/QRegularExpression>
+#include <QtCore/QSet>
+#include <QtCore/QUrlQuery>
 
 #include <utility>
 
@@ -28,14 +40,48 @@ RequestResult result(RequestResult::Status status, QString message = {}) {
     return RequestResult{status, std::move(message)};
 }
 
+QString generateClientId() {
+    const quint64 part = QRandomGenerator::global()->generate64();
+    return QString::number(part, 16).rightJustified(16, u'0').toLower();
+}
+
+QString generatePageViewId() {
+    const quint32 part = QRandomGenerator::global()->generate();
+    return QString::number(part, 16).rightJustified(6, u'0').right(6).toUpper();
+}
+
+bool isValidClientId(const QString &clientId) {
+    static const QRegularExpression clientIdPattern(QStringLiteral("^[0-9A-Fa-f]{16}$"));
+    return clientId.isEmpty() || clientIdPattern.match(clientId).hasMatch();
+}
+
 } // namespace
 
 Tracker::Tracker(QObject *parent) :
-    QObject(parent) {}
+    QObject(parent),
+    m_dispatcher(new NetworkDispatcher(this)),
+    m_requestBuilder(m_config) {
+
+    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+}
 
 Tracker::Tracker(TrackerConfig config, QObject *parent) :
     QObject(parent),
-    m_config(std::move(config)) {}
+    m_config(std::move(config)),
+    m_dispatcher(new NetworkDispatcher(this)),
+    m_requestBuilder(m_config) {
+
+    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+}
+
+Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, QObject *parent) :
+    QObject(parent),
+    m_config(std::move(config)),
+    m_dispatcher(new NetworkDispatcher(nam, this)),
+    m_requestBuilder(m_config) {
+
+    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+}
 
 Tracker::~Tracker() = default;
 
@@ -49,6 +95,7 @@ void Tracker::setConfig(const TrackerConfig &config) {
     }
 
     m_config = config;
+    m_requestBuilder.setConfig(m_config);
     emit configChanged();
 }
 
@@ -64,9 +111,8 @@ void Tracker::setConsentState(const ConsentState state) {
 
     m_consentStore->setConsentState(state);
 
-    // Consent withdrawal or denial must clear persisted client ID
     if (state == ConsentState::Denied || state == ConsentState::Withdrawn) {
-        m_clientIdStore->clearClientId();
+        clearVisitorIdentity();
     }
 
     if (const auto persistedState = m_consentStore->consentState(); persistedState != previousState) {
@@ -94,7 +140,7 @@ void Tracker::setConsentStore(ConsentStore *store) {
 
     const auto newState = m_consentStore->consentState();
     if (newState == ConsentState::Denied || newState == ConsentState::Withdrawn) {
-        m_clientIdStore->clearClientId();
+        clearVisitorIdentity();
     }
     if (oldState != newState) {
         emit consentStateChanged(newState);
@@ -107,7 +153,7 @@ void Tracker::setClientIdStore(ClientIdStore *store) {
 
     if (m_consentStore->consentState() == ConsentState::Denied
         || m_consentStore->consentState() == ConsentState::Withdrawn) {
-        m_clientIdStore->clearClientId();
+        clearVisitorIdentity();
     }
 }
 
@@ -115,40 +161,173 @@ QString Tracker::clientId() const {
     return m_clientIdStore->clientId();
 }
 
-void Tracker::setClientId(const QString &clientId) const {
+bool Tracker::setClientId(const QString &clientId) const {
+    if (!isValidClientId(clientId)) {
+        return false;
+    }
+
     m_clientIdStore->setClientId(clientId);
+    return true;
 }
 
-void Tracker::resetClientId() const {
-    m_clientIdStore->clearClientId();
+void Tracker::resetClientId() {
+    clearVisitorIdentity();
 }
 
-RequestResult Tracker::trackPageView(const PageView &pageView) const {
+void Tracker::setCustomDimension(const int id, const QString &value) {
+    if (value.isEmpty()) {
+        m_customDimensions.remove(id);
+    } else {
+        m_customDimensions[id] = value;
+    }
+}
+
+void Tracker::clearCustomDimension(const int id) {
+    m_customDimensions.remove(id);
+}
+
+void Tracker::forceNewVisit() {
+    m_forceNewVisit = true;
+}
+
+TrackerStats Tracker::stats() const {
+    return m_stats;
+}
+
+void Tracker::resetStats() {
+    m_stats = {};
+    emit statsChanged();
+}
+
+void Tracker::setNetworkAccessManager(QNetworkAccessManager *nam) {
+    const auto config = m_dispatcher->config();
+    const bool breakerOpen = m_dispatcher->isCircuitBreakerOpen();
+
+    delete m_dispatcher;
+    m_dispatcher = new NetworkDispatcher(nam, this);
+    m_dispatcher->setConfig(config);
+
+    if (breakerOpen) {
+        m_dispatcher->resetCircuitBreaker();
+    }
+
+    connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
+}
+
+void Tracker::setUserAgent(const QString &userAgent) {
+    m_userAgent = userAgent;
+}
+
+void Tracker::setNetworkDispatcherConfig(const NetworkDispatcherConfig &config) {
+    m_dispatcher->setConfig(config);
+}
+
+RequestResult Tracker::trackPageView(const PageView &pageView) {
     if (!pageView.isValid()) {
+        recordBlocked();
         return result(RequestResult::Status::InvalidPayload, QStringLiteral("Page view path is required."));
     }
 
     if (const auto validation = validateTrackingCall(); !validation.accepted()) {
+        recordBlocked();
         return validation;
+    }
+
+    ensureClientId();
+
+    PageView enriched = pageView;
+    enriched.customDimensions = mergeDimensions(pageView.customDimensions);
+
+    const auto buildResult = m_requestBuilder.buildPageView(enriched, buildOptions());
+    if (!buildResult.accepted()) {
+        recordBlocked();
+        return buildResult.result;
+    }
+
+    const QString pageViewId = generatePageViewId();
+    const bool forceNewVisit = m_forceNewVisit;
+
+    QUrl url = buildResult.request.url;
+    addTrackerParameters(url, pageViewId, forceNewVisit);
+
+    qCDebug(matomoSdk) << "dispatching page view";
+    if (m_dispatcher->dispatch(url)) {
+        m_currentPageViewId = pageViewId;
+        m_lastPageViewPath = enriched.path;
+        if (forceNewVisit) {
+            m_forceNewVisit = false;
+        }
+        recordSent();
     }
 
     return result(RequestResult::Status::Accepted);
 }
 
-RequestResult Tracker::trackEvent(const Event &event) const {
+RequestResult Tracker::trackEvent(const Event &event) {
     if (!event.isValid()) {
+        recordBlocked();
         return result(RequestResult::Status::InvalidPayload, QStringLiteral("Event category and action are required."));
     }
 
     if (const auto validation = validateTrackingCall(); !validation.accepted()) {
+        recordBlocked();
         return validation;
+    }
+
+    ensureClientId();
+
+    Event enriched = event;
+    enriched.customDimensions = mergeDimensions(event.customDimensions);
+
+    const auto buildResult = m_requestBuilder.buildEvent(enriched, buildOptions());
+    if (!buildResult.accepted()) {
+        recordBlocked();
+        return buildResult.result;
+    }
+
+    QUrl url = buildResult.request.url;
+    const bool forceNewVisit = m_forceNewVisit;
+    addTrackerParameters(url, m_currentPageViewId, forceNewVisit);
+
+    qCDebug(matomoSdk) << "dispatching event";
+    if (m_dispatcher->dispatch(url)) {
+        if (forceNewVisit) {
+            m_forceNewVisit = false;
+        }
+        recordSent();
     }
 
     return result(RequestResult::Status::Accepted);
 }
 
-RequestResult Tracker::sendPing() const {
-    return validateTrackingCall();
+RequestResult Tracker::sendPing() {
+    if (const auto validation = validateTrackingCall(); !validation.accepted()) {
+        recordBlocked();
+        return validation;
+    }
+
+    ensureClientId();
+
+    const QString pingPath = m_lastPageViewPath.isEmpty() ? QStringLiteral("/") : m_lastPageViewPath;
+    const auto buildResult = m_requestBuilder.buildPing(pingPath, buildOptions());
+    if (!buildResult.accepted()) {
+        recordBlocked();
+        return buildResult.result;
+    }
+
+    QUrl url = buildResult.request.url;
+    const bool forceNewVisit = m_forceNewVisit;
+    addTrackerParameters(url, m_currentPageViewId, forceNewVisit);
+
+    qCDebug(matomoSdk) << "dispatching ping";
+    if (m_dispatcher->dispatch(url)) {
+        if (forceNewVisit) {
+            m_forceNewVisit = false;
+        }
+        recordSent();
+    }
+
+    return result(RequestResult::Status::Accepted);
 }
 
 RequestResult Tracker::validateTrackingCall() const {
@@ -165,6 +344,78 @@ RequestResult Tracker::validateTrackingCall() const {
     }
 
     return result(RequestResult::Status::Accepted);
+}
+
+void Tracker::clearVisitorIdentity() {
+    m_clientIdStore->clearClientId();
+    m_currentPageViewId.clear();
+    m_lastPageViewPath.clear();
+}
+
+void Tracker::ensureClientId() {
+    if (m_clientIdStore->clientId().isEmpty()) {
+        m_clientIdStore->setClientId(generateClientId());
+    }
+}
+
+RequestBuildOptions Tracker::buildOptions() const {
+    RequestBuildOptions options;
+    options.clientId = m_clientIdStore->clientId();
+    options.userAgent = m_userAgent;
+    options.language = QLocale().name();
+    options.screenResolution = {};
+    return options;
+}
+
+QList<CustomDimension> Tracker::mergeDimensions(const QList<CustomDimension> &callDimensions) const {
+    QSet<int> usedIds;
+    QList<CustomDimension> merged;
+
+    for (const auto &dim: callDimensions) {
+        merged.append(dim);
+        usedIds.insert(dim.id);
+    }
+
+    for (auto it = m_customDimensions.constBegin(); it != m_customDimensions.constEnd(); ++it) {
+        if (!usedIds.contains(it.key())) {
+            merged.append({.id = it.key(), .value = it.value()});
+        }
+    }
+
+    return merged;
+}
+
+void Tracker::addTrackerParameters(QUrl &url, const QString &pageViewId, const bool forceNewVisit) const {
+    QUrlQuery query(url);
+
+    if (!pageViewId.isEmpty()) {
+        query.addQueryItem(QStringLiteral("pv_id"), pageViewId);
+    }
+
+    if (forceNewVisit) {
+        query.addQueryItem(QStringLiteral("new_visit"), QStringLiteral("1"));
+    }
+
+    url.setQuery(query);
+}
+
+void Tracker::recordBlocked() {
+    m_stats.blockedCount++;
+    emit statsChanged();
+}
+
+void Tracker::recordSent() {
+    m_stats.sentCount++;
+    emit statsChanged();
+}
+
+void Tracker::onDispatchFinished(const DispatchResult &dispatchResult) {
+    if (!dispatchResult.success()) {
+        m_stats.failedCount++;
+        emit statsChanged();
+    }
+
+    emit dispatchFinished(dispatchResult);
 }
 
 } // namespace MatomoQt

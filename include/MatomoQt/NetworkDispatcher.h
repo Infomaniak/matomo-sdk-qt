@@ -95,8 +95,9 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
          * DispatchResult with status CircuitBreakerOpen is emitted.
          *
          * The result is always reported via the dispatchFinished() signal.
+         * Returns true only when a network reply was created.
          */
-        void dispatch(const QUrl &url);
+        bool dispatch(const QUrl &url);
 
     signals:
         void dispatchFinished(const DispatchResult &result);

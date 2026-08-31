@@ -20,22 +20,35 @@
 #include <MatomoQt/ClientIdStore.h>
 #include <MatomoQt/ConsentState.h>
 #include <MatomoQt/ConsentStore.h>
+#include <MatomoQt/DispatchResult.h>
 #include <MatomoQt/Event.h>
 #include <MatomoQt/Export.h>
 #include <MatomoQt/InMemoryClientIdStore.h>
 #include <MatomoQt/InMemoryConsentStore.h>
+#include <MatomoQt/NetworkDispatcher.h>
+#include <MatomoQt/NetworkDispatcherConfig.h>
 #include <MatomoQt/PageView.h>
+#include <MatomoQt/RequestBuilder.h>
 #include <MatomoQt/RequestResult.h>
 #include <MatomoQt/TrackerConfig.h>
+#include <MatomoQt/TrackerStats.h>
 
+#include <QtCore/QMap>
 #include <QtCore/QObject>
+
+class QNetworkAccessManager;
 
 namespace MatomoQt {
 
 /**
  * Main entry point for tracking calls.
  *
- * This milestone only validates local state and emits no network requests.
+ * The Tracker orchestrates privacy checks, request building and network
+ * dispatch.  It owns an internal NetworkDispatcher and RequestBuilder.
+ *
+ * Tracking calls return RequestResult synchronously to indicate whether the
+ * call was accepted or rejected.  The asynchronous network result is reported
+ * via the dispatchFinished() signal.
  */
 class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         Q_OBJECT
@@ -43,6 +56,7 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
     public:
         explicit Tracker(QObject *parent = nullptr);
         explicit Tracker(TrackerConfig config, QObject *parent = nullptr);
+        explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, QObject *parent);
         ~Tracker() override;
 
         /** Returns the current tracker configuration. */
@@ -72,28 +86,83 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         /** Returns the current client ID, read from the active store. */
         [[nodiscard]] QString clientId() const;
 
-        /** Persists the client ID, written to the active store. */
-        void setClientId(const QString &clientId) const;
+        /** Persists a valid client ID in the active store.
+         *
+         * The ID must be empty or contain exactly 16 hexadecimal characters.
+         * Returns false and leaves the store unchanged when validation fails.
+         */
+        [[nodiscard]] bool setClientId(const QString &clientId) const;
 
         /** Resets the client ID, clearing the active store. */
-        void resetClientId() const;
+        void resetClientId();
 
-        /** Validates a page view tracking call without sending a request. */
-        [[nodiscard]] RequestResult trackPageView(const PageView &pageView) const;
+        /** Builds and dispatches a page view tracking request. */
+        [[nodiscard]] RequestResult trackPageView(const PageView &pageView);
 
-        /** Validates an event tracking call without sending a request. */
-        [[nodiscard]] RequestResult trackEvent(const Event &event) const;
+        /** Builds and dispatches an event tracking request. */
+        [[nodiscard]] RequestResult trackEvent(const Event &event);
 
-        /** Validates a ping tracking call without sending a request. */
-        [[nodiscard]] RequestResult sendPing() const;
+        /** Builds and dispatches a ping tracking request. */
+        [[nodiscard]] RequestResult sendPing();
+
+        /** Sets a tracker-level custom dimension merged into page-view and event
+         *  tracking requests (per-call dimensions take precedence on duplicate IDs).
+         *
+         *  Tracker-level dimensions are not sent with sendPing()
+         */
+        void setCustomDimension(int id, const QString &value);
+
+        /** Removes a tracker-level custom dimension. */
+        void clearCustomDimension(int id);
+
+        /** Forces new_visit=1 on the next dispatched request. */
+        void forceNewVisit();
+
+        /** Returns the current runtime statistics. */
+        [[nodiscard]] TrackerStats stats() const;
+
+        /** Resets all runtime statistics counters to zero. */
+        void resetStats();
+
+        /** Injects a custom QNetworkAccessManager for the internal dispatcher.
+         *
+         * The Tracker does not take ownership of @p nam.  Pass nullptr to
+         * revert to the internal default.
+         */
+        void setNetworkAccessManager(QNetworkAccessManager *nam);
+
+        /** Sets the User-Agent string included in outgoing requests.
+         *
+         * Leave empty to omit the ua parameter.  The host application can
+         * build this with UserAgentBuilder or supply its own.
+         */
+        void setUserAgent(const QString &userAgent);
+
+        /** Sets the network dispatcher configuration (timeout, circuit breaker).
+         *
+         * Changing the configuration resets the circuit breaker.
+         */
+        void setNetworkDispatcherConfig(const NetworkDispatcherConfig &config);
 
     signals:
         void configChanged();
         void consentStateChanged(ConsentState state);
         void enabledChanged(bool enabled);
+        void dispatchFinished(const DispatchResult &result);
+        void statsChanged();
 
     private:
         [[nodiscard]] RequestResult validateTrackingCall() const;
+
+        void clearVisitorIdentity();
+
+        RequestBuildOptions buildOptions() const;
+        QList<CustomDimension> mergeDimensions(const QList<CustomDimension> &callDimensions) const;
+        void addTrackerParameters(QUrl &url, const QString &pageViewId, bool forceNewVisit) const;
+        void ensureClientId();
+        void recordBlocked();
+        void recordSent();
+        void onDispatchFinished(const DispatchResult &result);
 
         TrackerConfig m_config;
         InMemoryConsentStore m_defaultConsentStore;
@@ -101,6 +170,15 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         ConsentStore *m_consentStore = &m_defaultConsentStore;
         ClientIdStore *m_clientIdStore = &m_defaultClientIdStore;
         bool m_enabled = true;
+
+        NetworkDispatcher *m_dispatcher;
+        RequestBuilder m_requestBuilder;
+        QMap<int, QString> m_customDimensions;
+        QString m_currentPageViewId;
+        QString m_lastPageViewPath;
+        bool m_forceNewVisit = false;
+        TrackerStats m_stats;
+        QString m_userAgent;
 };
 
 } // namespace MatomoQt
