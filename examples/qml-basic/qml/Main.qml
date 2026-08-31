@@ -43,6 +43,12 @@ ApplicationWindow {
             appendLog("[tracker] " + requestStatusName(MatomoTracker.lastRequestStatus) +
                 (MatomoTracker.lastRequestMessage.length > 0 ? (" - " + MatomoTracker.lastRequestMessage) : ""));
         }
+
+        function onDispatchFinished(status, httpStatus, message) {
+            appendLog("[network] " + dispatchStatusName(status) +
+                (httpStatus > 0 ? (" (HTTP " + httpStatus + ")") : "") +
+                (message.length > 0 ? (" - " + message) : ""));
+        }
     }
 
     function consentStateName(state) {
@@ -56,11 +62,22 @@ ApplicationWindow {
 
     function requestStatusName(status) {
         switch (status) {
-            case RequestStatus.Accepted: return "Accepted";
+            case RequestStatus.RequestAccepted: return "Accepted";
             case RequestStatus.RequestDisabled: return "Rejected: tracker disabled";
             case RequestStatus.RequestBlockedByPrivacy: return "Rejected: blocked by privacy/consent";
             case RequestStatus.RequestInvalidConfig: return "Rejected: invalid tracker configuration";
             case RequestStatus.RequestInvalidPayload: return "Rejected: invalid call payload";
+            default: return "Unknown";
+        }
+    }
+
+    function dispatchStatusName(status) {
+        switch (status) {
+            case DispatchStatus.Success: return "Delivered";
+            case DispatchStatus.Timeout: return "Timed out";
+            case DispatchStatus.NetworkError: return "Network error";
+            case DispatchStatus.SslError: return "SSL error";
+            case DispatchStatus.CircuitBreakerOpen: return "Circuit breaker open";
             default: return "Unknown";
         }
     }

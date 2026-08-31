@@ -56,6 +56,10 @@ int main(int argc, char *argv[]) {
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/MatomoQtExamples/QmlBasic/Main.qml")));
 #endif
 
+    if (engine.rootObjects().isEmpty()) {
+        return 1;
+    }
+
     if (parser.isSet(exitOnCompletedOption)) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
     }
