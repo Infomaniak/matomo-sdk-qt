@@ -7,7 +7,12 @@ target_sources(MatomoQtCore
         ConsentStore.cpp
         CustomDimension.cpp
         Event.cpp
+        InMemoryClientIdStore.cpp
+        InMemoryConsentStore.cpp
         PageView.cpp
+        PrivacyController.cpp
+        QSettingsClientIdStore.cpp
+        QSettingsConsentStore.cpp
         RequestBuilder.cpp
         RequestBuildResult.cpp
         RequestResult.cpp
@@ -20,8 +25,13 @@ target_sources(MatomoQtCore
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/ConsentStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/CustomDimension.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/Event.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryClientIdStore.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/InMemoryConsentStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PageView.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyController.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/PrivacyMode.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/QSettingsClientIdStore.h"
+        "${PROJECT_SOURCE_DIR}/include/MatomoQt/QSettingsConsentStore.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuilder.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildOptions.h"
         "${PROJECT_SOURCE_DIR}/include/MatomoQt/RequestBuildResult.h"

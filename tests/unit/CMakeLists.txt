@@ -1,5 +1,29 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
+add_executable(tst_stores tst_stores.cpp)
+
+set_target_properties(tst_stores PROPERTIES AUTOMOC ON)
+
+target_link_libraries(tst_stores
+    PRIVATE
+        MatomoQt::Core
+        Qt6::Test
+)
+
+add_test(NAME tst_stores COMMAND tst_stores)
+
+add_executable(tst_privacycontroller tst_privacycontroller.cpp)
+
+set_target_properties(tst_privacycontroller PROPERTIES AUTOMOC ON)
+
+target_link_libraries(tst_privacycontroller
+    PRIVATE
+        MatomoQt::Core
+        Qt6::Test
+)
+
+add_test(NAME tst_privacycontroller COMMAND tst_privacycontroller)
+
 add_executable(tst_tracker tst_tracker.cpp)
 
 set_target_properties(tst_tracker PROPERTIES AUTOMOC ON)
@@ -51,8 +75,13 @@ set(matomoqt_public_headers
     ConsentStore
     CustomDimension
     Event
+    InMemoryClientIdStore
+    InMemoryConsentStore
     PageView
+    PrivacyController
     PrivacyMode
+    QSettingsClientIdStore
+    QSettingsConsentStore
     RequestBuilder
     RequestBuildOptions
     RequestBuildResult
