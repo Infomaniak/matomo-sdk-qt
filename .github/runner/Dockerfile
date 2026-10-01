@@ -5,11 +5,11 @@ FROM ubuntu:${UBUNTU_VERSION}
 
 # See https://github.com/actions/runner/releases
 # ARCH should be in (x64 | arm64 | arm)
-ARG ACTION_RUNNER_TAG=2.334.0
+ARG ACTION_RUNNER_TAG=2.337.0
 ARG ACTION_RUNNER_ARCH=x64
 
 # See https://github.com/miurahr/aqtinstall
-ARG QT_VERSION=6.8.3
+ARG QT_VERSION=6.12.0
 ARG QT_ARCHIVES="qtbase qtdeclarative icu"
 ARG QT_MODULES=""
 ARG QT_DIR=/opt/qt
