@@ -93,6 +93,14 @@ RUN /opt/venv/bin/pip install "aqtinstall<3.3"
 
 RUN /opt/venv/bin/pip install "conan>=2,<3"
 
+# Qt >= 6.12 requires CMake >= 3.25, newer than the one shipped by Ubuntu 22.04.
+# Older Qt versions keep the distribution CMake.
+RUN SYSTEM_CMAKE_VERSION="$(cmake --version | head -n1 | awk '{print $3}')" && \
+    if dpkg --compare-versions "$QT_VERSION" ge 6.12 && \
+       dpkg --compare-versions "$SYSTEM_CMAKE_VERSION" lt 3.25; then \
+        /opt/venv/bin/pip install "cmake>=3.25,<4"; \
+    fi
+
 ENV PATH="/opt/venv/bin:${PATH}"
 
 RUN case "$ACTION_RUNNER_ARCH" in \
