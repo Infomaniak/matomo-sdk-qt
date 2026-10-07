@@ -36,10 +36,10 @@ The Compose file starts the CI runners used by the current matrix:
 
 - Ubuntu 22.04 + Qt 6.2.3
 - Ubuntu 22.04 + Qt 6.8.3
-- Ubuntu 22.04 + Qt 6.11.1
+- Ubuntu 22.04 + Qt 6.12.0
 - Ubuntu 26.04 + Qt 6.2.3
 - Ubuntu 26.04 + Qt 6.8.3
-- Ubuntu 26.04 + Qt 6.11.1
+- Ubuntu 26.04 + Qt 6.12.0
 
 Each runner image needs roughly 5 GB of Docker/containerd storage while building.
 Make sure the Docker root directory and the containerd snapshotter storage have
@@ -82,9 +82,9 @@ The CI workflow targets runners by label. Start one container per matrix entry y
 |------------------------|----------------------------------------|
 | `ubuntu22.04-qt6.2.3`  | `self-hosted, ubuntu-22.04, qt-6.2.3`  |
 | `ubuntu22.04-qt6.8.3`  | `self-hosted, ubuntu-22.04, qt-6.8.3`  |
-| `ubuntu22.04-qt6.11.1` | `self-hosted, ubuntu-22.04, qt-6.11.1` |
+| `ubuntu22.04-qt6.12.0` | `self-hosted, ubuntu-22.04, qt-6.12.0` |
 | `ubuntu26.04-qt6.2.3`  | `self-hosted, ubuntu-26.04, qt-6.2.3`  |
 | `ubuntu26.04-qt6.8.3`  | `self-hosted, ubuntu-26.04, qt-6.8.3`  |
-| `ubuntu26.04-qt6.11.1` | `self-hosted, ubuntu-26.04, qt-6.11.1` |
+| `ubuntu26.04-qt6.12.0` | `self-hosted, ubuntu-26.04, qt-6.12.0` |
 
 To skip a combination, remove the corresponding entry from `matrix.include` in `.github/workflows/ci.yml`.

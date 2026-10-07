@@ -28,13 +28,13 @@ jobs:
           - ubuntu: "22.04"
             qt: "6.8.3"
           - ubuntu: "22.04"
-            qt: "6.11.1"
+            qt: "6.12.0"
           - ubuntu: "26.04"
             qt: "6.2.3"
           - ubuntu: "26.04"
             qt: "6.8.3"
           - ubuntu: "26.04"
-            qt: "6.11.1"
+            qt: "6.12.0"
 
     steps:
       - name: Checkout

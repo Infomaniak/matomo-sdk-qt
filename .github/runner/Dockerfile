@@ -5,11 +5,11 @@ FROM ubuntu:${UBUNTU_VERSION}
 
 # See https://github.com/actions/runner/releases
 # ARCH should be in (x64 | arm64 | arm)
-ARG ACTION_RUNNER_TAG=2.334.0
+ARG ACTION_RUNNER_TAG=2.337.0
 ARG ACTION_RUNNER_ARCH=x64
 
 # See https://github.com/miurahr/aqtinstall
-ARG QT_VERSION=6.8.3
+ARG QT_VERSION=6.12.0
 ARG QT_ARCHIVES="qtbase qtdeclarative icu"
 ARG QT_MODULES=""
 ARG QT_DIR=/opt/qt
@@ -92,6 +92,14 @@ RUN python3 -m venv /opt/venv
 RUN /opt/venv/bin/pip install "aqtinstall<3.3"
 
 RUN /opt/venv/bin/pip install "conan>=2,<3"
+
+# Qt >= 6.12 requires CMake >= 3.25, newer than the one shipped by Ubuntu 22.04.
+# Older Qt versions keep the distribution CMake.
+RUN SYSTEM_CMAKE_VERSION="$(cmake --version | head -n1 | awk '{print $3}')" && \
+    if dpkg --compare-versions "$QT_VERSION" ge 6.12 && \
+       dpkg --compare-versions "$SYSTEM_CMAKE_VERSION" lt 3.25; then \
+        /opt/venv/bin/pip install "cmake>=3.25,<4"; \
+    fi
 
 ENV PATH="/opt/venv/bin:${PATH}"
 
