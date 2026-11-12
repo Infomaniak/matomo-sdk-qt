@@ -22,6 +22,7 @@
 #include <QtCore/QPointer>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QSslSocket>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
 #include <QtTest/QtTest>
@@ -46,6 +47,8 @@ class TestHttpServer : public QObject {
         enum class Mode {
             Respond200,
             Respond500,
+            Respond304,
+            RespondWithoutTls,
             HangWithoutResponse,
             CloseWithoutResponse,
         };
@@ -106,6 +109,12 @@ class TestHttpServer : public QObject {
         void readRequest(QTcpSocket *socket) {
             QByteArray data = socket->property("requestData").toByteArray();
             data += socket->readAll();
+            if (m_mode == Mode::RespondWithoutTls) {
+                // The client opened a TLS handshake: answer in plain HTTP right away.
+                ++m_requestCount;
+                respond(socket, Mode::Respond200);
+                return;
+            }
             if (!data.contains("\r\n\r\n")) {
                 socket->setProperty("requestData", data);
                 return;
@@ -140,6 +149,16 @@ class TestHttpServer : public QObject {
                             "Error");
                     socket->disconnectFromHost();
                     break;
+                case Mode::Respond304:
+                    socket->write(
+                            "HTTP/1.1 304 Not Modified\r\n"
+                            "Connection: close\r\n"
+                            "\r\n");
+                    socket->disconnectFromHost();
+                    break;
+                case Mode::RespondWithoutTls:
+                    respond(socket, Mode::Respond200);
+                    break;
                 case Mode::HangWithoutResponse:
                     // Intentionally do nothing; let the timeout fire.
                     m_pendingSockets.append(socket);
@@ -169,6 +188,8 @@ class NetworkDispatcherTest : public QObject {
         void dispatchFailsWhenServerClosesConnection();
         void dispatchFailsOnTimeout();
         void dispatchFailsOnNon2xxResponse();
+        void non2xxResponseWithoutQtErrorIsFailure();
+        void tlsHandshakeFailureReportsSslError();
         void circuitBreakerOpensAfterConsecutiveFailures();
         void circuitBreakerBlocksDispatchWhenOpen();
         void circuitBreakerResetsOnManualReset();
@@ -287,6 +308,49 @@ void NetworkDispatcherTest::dispatchFailsOnNon2xxResponse() {
     QCOMPARE(result.status, DispatchStatus::Value::NetworkError);
     QCOMPARE(result.httpStatus, 500);
     QVERIFY(!result.success());
+}
+
+void NetworkDispatcherTest::non2xxResponseWithoutQtErrorIsFailure() {
+    // Qt reports a 304 with NoError. Catches a dispatcher that trusts NoError alone: the request
+    // would be reported as sent and a recovery probe would close the breaker on a broken server.
+    TestHttpServer server(TestHttpServer::Mode::Respond304);
+    QVERIFY(server.start());
+    NetworkDispatcherConfig config;
+    config.maxConsecutiveFailures = 1;
+    NetworkDispatcher dispatcher;
+    dispatcher.setConfig(config);
+    QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
+
+    QVERIFY(dispatcher.dispatch(server.url()));
+    QVERIFY(finishedSpy.wait(5000));
+
+    const auto result = finishedSpy.at(0).at(0).value<DispatchResult>();
+    QCOMPARE(result.status, DispatchStatus::Value::NetworkError);
+    QCOMPARE(result.httpStatus, 304);
+    QVERIFY(dispatcher.isCircuitBreakerOpen());
+}
+
+void NetworkDispatcherTest::tlsHandshakeFailureReportsSslError() {
+    // Catches a TLS failure reported as a generic network error, or not counted as a failure:
+    // the host could not tell a certificate or proxy problem from a server outage.
+    if (!QSslSocket::supportsSsl()) {
+        QSKIP("No TLS backend available.");
+    }
+    TestHttpServer server(TestHttpServer::Mode::RespondWithoutTls);
+    QVERIFY(server.start());
+    NetworkDispatcherConfig config;
+    config.maxConsecutiveFailures = 1;
+    NetworkDispatcher dispatcher;
+    dispatcher.setConfig(config);
+    QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
+
+    QUrl url = server.url();
+    url.setScheme(QStringLiteral("https"));
+    QVERIFY(dispatcher.dispatch(url));
+    QVERIFY(finishedSpy.wait(5000));
+
+    QCOMPARE(finishedSpy.at(0).at(0).value<DispatchResult>().status, DispatchStatus::Value::SslError);
+    QVERIFY(dispatcher.isCircuitBreakerOpen());
 }
 
 void NetworkDispatcherTest::circuitBreakerOpensAfterConsecutiveFailures() {

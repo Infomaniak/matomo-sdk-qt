@@ -185,6 +185,7 @@ class TrackerIntegrationTest : public QObject {
         void pageViewIdClearedAfterConsentDenial();
         void forceNewVisitAddsNewVisitParam();
         void customDimensionAppearsInRequest();
+        void callDimensionOverridesTrackerDimension();
         void screenResolutionIsSentOnlyWhenConfigured();
         void clearCustomDimensionRemovesFromRequest();
         void pingDoesNotCarryCustomDimensions();
@@ -485,6 +486,31 @@ void TrackerIntegrationTest::customDimensionAppearsInRequest() {
 
     const auto query = queryFor(server.lastRequestPath());
     QCOMPARE(queryValue(query, QStringLiteral("dimension3")), QStringLiteral("beta"));
+}
+
+void TrackerIntegrationTest::callDimensionOverridesTrackerDimension() {
+    // Catches a merge where the tracker-level value wins over the per-call one, or where both are
+    // kept: the builder then rejects the duplicate ID and the page view is never sent.
+    TestHttpServer server;
+    QVERIFY(server.start());
+
+    auto config = validConfig(server.url());
+    config.customDimensions[3] = QStringLiteral("tracker");
+    config.customDimensions[4] = QStringLiteral("kept");
+
+    DefaultStores stores;
+    Tracker tracker(config, stores.consent, stores.clientId);
+    tracker.setConsentState(ConsentState::Value::Granted);
+
+    QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
+    const auto result = tracker.trackPageView(
+            {.path = QStringLiteral("settings"), .customDimensions = {{.id = 3, .value = QStringLiteral("call")}}});
+    QCOMPARE(result.status, RequestStatus::Value::RequestAccepted);
+    QVERIFY(dispatchSpy.wait(5000));
+
+    const auto query = queryFor(server.lastRequestPath());
+    QCOMPARE(query.allQueryItemValues(QStringLiteral("dimension3")), QStringList{QStringLiteral("call")});
+    QCOMPARE(queryValue(query, QStringLiteral("dimension4")), QStringLiteral("kept"));
 }
 
 void TrackerIntegrationTest::screenResolutionIsSentOnlyWhenConfigured() {
