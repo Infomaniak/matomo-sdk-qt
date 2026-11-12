@@ -54,8 +54,10 @@ class MATOMOQT_CORE_EXPORT Tracker : public QObject {
         Q_OBJECT
 
     public:
-        explicit Tracker(TrackerConfig config, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent = nullptr);
-        explicit Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent);
+        explicit Tracker(TrackerConfig config, ConsentStore &consentStore, ClientIdStore &clientIdStore,
+                         QObject *parent = nullptr);
+        explicit Tracker(TrackerConfig config, QNetworkAccessManager *networkAccessManager, ConsentStore &consentStore,
+                         ClientIdStore &clientIdStore, QObject *parent);
         ~Tracker() override;
 
         /** Returns the current tracker configuration. */

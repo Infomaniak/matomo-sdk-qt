@@ -19,6 +19,8 @@
 
 #include <MatomoQt/Export.h>
 
+#include <cstdint>
+
 namespace MatomoQt {
 
 /** Configuration for the network dispatcher. */
@@ -28,6 +30,12 @@ struct MATOMOQT_CORE_EXPORT NetworkDispatcherConfig {
 
         /** Number of consecutive failures before the circuit breaker opens. 0 disables the circuit breaker. */
         int maxConsecutiveFailures = 5;
+
+        /** Cooldown before allowing one recovery probe, in milliseconds.
+         *
+         * 0 disables automatic recovery: the circuit breaker must be reset manually.
+         */
+        int32_t circuitBreakerCooldownMs = 60000;
 
         [[nodiscard]] bool operator==(const NetworkDispatcherConfig &other) const = default;
 };

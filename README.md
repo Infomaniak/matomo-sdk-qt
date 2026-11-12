@@ -60,6 +60,10 @@ The public API includes:
   `QNetworkAccessManager`, timeout, circuit breaker and `rand` cache-busting;
   it never silently ignores SSL errors and never logs full tracking URLs.
 
+`NetworkDispatcherConfig::circuitBreakerCooldownMs` defaults to `60000`: after
+the circuit breaker opens, the next request after the cooldown acts as a single
+recovery probe. Set it to `0` to require `resetCircuitBreaker()` instead.
+
 `Tracker` orchestrates privacy checks, request building and asynchronous
 network dispatching. Tracking calls report local acceptance synchronously,
 while `dispatchFinished()` reports the eventual network result.

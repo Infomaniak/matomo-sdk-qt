@@ -58,23 +58,22 @@ bool isValidClientId(const QString &clientId) {
 } // namespace
 
 Tracker::Tracker(TrackerConfig config, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent) :
-    Tracker(std::move(config), nullptr, consentStore, clientIdStore, parent) {
-}
+    Tracker(std::move(config), nullptr, consentStore, clientIdStore, parent) {}
 
-Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *nam, ConsentStore &consentStore, ClientIdStore &clientIdStore, QObject *parent) :
+Tracker::Tracker(TrackerConfig config, QNetworkAccessManager *networkAccessManager, ConsentStore &consentStore,
+                 ClientIdStore &clientIdStore, QObject *parent) :
     QObject(parent),
     m_config(std::move(config)),
     m_consentStore(consentStore),
     m_clientIdStore(clientIdStore),
-    m_dispatcher(new NetworkDispatcher(nam, this)),
+    m_dispatcher(new NetworkDispatcher(networkAccessManager, this)),
     m_requestBuilder(m_config) {
-
     m_dispatcher->setConfig(m_config.networkDispatcherConfig);
 
     connect(m_dispatcher, &NetworkDispatcher::dispatchFinished, this, &Tracker::onDispatchFinished);
 
-    if (m_consentStore.consentState() == ConsentState::Value::Denied
-        || m_consentStore.consentState() == ConsentState::Value::Withdrawn) {
+    if (m_consentStore.consentState() == ConsentState::Value::Denied ||
+        m_consentStore.consentState() == ConsentState::Value::Withdrawn) {
         clearVisitorIdentity();
     }
 }

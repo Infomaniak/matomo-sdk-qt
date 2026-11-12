@@ -21,8 +21,8 @@
 #include <MatomoQt/Export.h>
 #include <MatomoQt/NetworkDispatcherConfig.h>
 
+#include <QtCore/QHash>
 #include <QtCore/QObject>
-#include <QtCore/QSet>
 #include <QtCore/QUrl>
 
 class QNetworkAccessManager;
@@ -42,7 +42,7 @@ namespace MatomoQt {
  * - Dependency injection of a custom QNetworkAccessManager.
  * - Per-request timeout (default 10 s).
  * - Circuit breaker that opens after a configurable number of consecutive
- *   failures and blocks further dispatch until reset.
+ *   failures and allows one recovery probe after a configurable cooldown.
  * - `rand` cache-busting parameter added to every outgoing request.
  * - SSL errors are never silently ignored.
  * - Safe destruction while replies are pending.
@@ -58,11 +58,11 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
 
         /** Creates a dispatcher using the supplied QNetworkAccessManager.
          *
-         * The dispatcher does not take ownership of @p nam.  The caller must
-         * ensure @p nam outlives the dispatcher, or pass a child of the
+         * The dispatcher does not take ownership of @p networkAccessManager. The caller must
+         * ensure @p networkAccessManager outlives the dispatcher, or pass a child of the
          * dispatcher.
          */
-        explicit NetworkDispatcher(QNetworkAccessManager *nam, QObject *parent = nullptr);
+        explicit NetworkDispatcher(QNetworkAccessManager *networkAccessManager, QObject *parent = nullptr);
 
         ~NetworkDispatcher() override;
 
@@ -76,14 +76,20 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
 
         /** Replaces the dispatcher configuration.
          *
-         * Changing the configuration resets the circuit breaker.
+         * Changing timeoutMs or maxConsecutiveFailures resets the circuit breaker.
+         * A changed cooldown applies the next time a cooldown starts. Setting it
+         * to 0 stops automatic recovery, including any current cooldown. Setting
+         * a positive cooldown while the breaker is open without automatic
+         * recovery starts a cooldown immediately.
          */
         void setConfig(const NetworkDispatcherConfig &config);
 
-        /** Returns true when the circuit breaker is open and blocking dispatch. */
+        /** Returns true when the circuit breaker is open, including the half-open
+         * state in which a single recovery probe is allowed.
+         */
         [[nodiscard]] bool isCircuitBreakerOpen() const;
 
-        /** Resets the circuit breaker to the closed state. */
+        /** Resets the circuit breaker to the closed state and cancels automatic recovery. */
         void resetCircuitBreaker();
 
         /** Dispatches a GET request to @p url.
@@ -91,8 +97,9 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
          * The @p url should be a fully-built Matomo tracking URL.  A `rand`
          * cache-busting parameter is added before the request is sent.
          *
-         * If the circuit breaker is open, no network request is made and a
-         * DispatchResult with status CircuitBreakerOpen is emitted.
+         * If the circuit breaker is open, a single recovery probe is allowed
+         * after the cooldown. Other requests are rejected with a DispatchResult
+         * whose status is CircuitBreakerOpen.
          *
          * The result is always reported via the dispatchFinished() signal.
          * Returns true only when a network reply was created.
@@ -107,19 +114,23 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
     private:
         void handleReplyFinished(QNetworkReply *reply);
         void handleTimeout(QNetworkReply *reply);
-        void recordSuccess();
-        void recordFailure(DispatchStatus::Value status, const QString &message, int httpStatus = 0);
+        void recordSuccess(bool probe);
+        void recordFailure(bool probe);
         void setOpen(bool open);
         void cleanupReply(QNetworkReply *reply);
 
         struct PendingReply {
                 QTimer *timer = nullptr;
+                bool probe = false;
         };
 
         NetworkDispatcherConfig m_config;
-        QNetworkAccessManager *m_nam = nullptr;
+        QNetworkAccessManager *m_networkAccessManager = nullptr;
+        QTimer *m_cooldownTimer = nullptr;
         int m_consecutiveFailures = 0;
         bool m_circuitBreakerOpen = false;
+        bool m_halfOpen = false;
+        bool m_probeInFlight = false;
         QHash<QNetworkReply *, PendingReply> m_pendingReplies;
 };
 

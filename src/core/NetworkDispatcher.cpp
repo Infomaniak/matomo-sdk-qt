@@ -47,12 +47,15 @@ QUrl addCacheBuster(QUrl url) {
 } // namespace
 
 NetworkDispatcher::NetworkDispatcher(QObject *parent) :
-    QObject(parent),
-    m_nam(new QNetworkAccessManager(this)) {}
+    NetworkDispatcher(nullptr, parent) {}
 
-NetworkDispatcher::NetworkDispatcher(QNetworkAccessManager *nam, QObject *parent) :
+NetworkDispatcher::NetworkDispatcher(QNetworkAccessManager *networkAccessManager, QObject *parent) :
     QObject(parent),
-    m_nam(nam ? nam : new QNetworkAccessManager(this)) {}
+    m_networkAccessManager(networkAccessManager ? networkAccessManager : new QNetworkAccessManager(this)),
+    m_cooldownTimer(new QTimer(this)) {
+    m_cooldownTimer->setSingleShot(true);
+    connect(m_cooldownTimer, &QTimer::timeout, this, [this]() { m_halfOpen = true; });
+}
 
 NetworkDispatcher::~NetworkDispatcher() {
     for (auto it = m_pendingReplies.begin(); it != m_pendingReplies.end(); ++it) {
@@ -75,8 +78,18 @@ void NetworkDispatcher::setConfig(const NetworkDispatcherConfig &config) {
         return;
     }
 
+    const bool reset = m_config.timeoutMs != config.timeoutMs || m_config.maxConsecutiveFailures != config.maxConsecutiveFailures;
     m_config = config;
-    resetCircuitBreaker();
+    if (reset) {
+        resetCircuitBreaker();
+    } else if (m_config.circuitBreakerCooldownMs <= 0) {
+        m_cooldownTimer->stop();
+        m_halfOpen = false;
+    } else if (m_circuitBreakerOpen && !m_halfOpen && !m_cooldownTimer->isActive()) {
+        // The breaker opened while automatic recovery was disabled: start the cooldown now,
+        // otherwise only a manual reset could ever close it.
+        m_cooldownTimer->start(m_config.circuitBreakerCooldownMs);
+    }
     emit configChanged();
 }
 
@@ -85,31 +98,40 @@ bool NetworkDispatcher::isCircuitBreakerOpen() const {
 }
 
 void NetworkDispatcher::resetCircuitBreaker() {
+    m_cooldownTimer->stop();
     m_consecutiveFailures = 0;
+    m_halfOpen = false;
+    m_probeInFlight = false;
+    for (auto it = m_pendingReplies.begin(); it != m_pendingReplies.end(); ++it) {
+        it.value().probe = false;
+    }
     setOpen(false);
 }
 
 bool NetworkDispatcher::dispatch(const QUrl &url) {
     qCDebug(matomoSdk) << "dispatching request";
-    if (m_circuitBreakerOpen) {
+    if (m_circuitBreakerOpen && (!m_halfOpen || m_probeInFlight)) {
         qCDebug(matomoSdk) << "dispatch blocked by circuit breaker";
-        emit dispatchFinished(makeResult(DispatchStatus::Value::CircuitBreakerOpen,
-                                          QStringLiteral("Circuit breaker is open.")));
+        emit dispatchFinished(makeResult(DispatchStatus::Value::CircuitBreakerOpen, QStringLiteral("Circuit breaker is open.")));
         return false;
     }
 
     if (!url.isValid() || url.isEmpty()) {
         qCDebug(matomoSdk) << "dispatch rejected: invalid URL";
-        emit dispatchFinished(makeResult(DispatchStatus::Value::NetworkError,
-                                          QStringLiteral("Tracking URL is invalid.")));
+        emit dispatchFinished(makeResult(DispatchStatus::Value::NetworkError, QStringLiteral("Tracking URL is invalid.")));
         return false;
+    }
+
+    const bool probe = m_circuitBreakerOpen;
+    if (probe) {
+        m_probeInFlight = true;
     }
 
     const QUrl dispatchUrl = addCacheBuster(url);
     QNetworkRequest request(dispatchUrl);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
-    QNetworkReply *reply = m_nam->get(request);
+    QNetworkReply *reply = m_networkAccessManager->get(request);
 
     auto *timer = new QTimer(this);
     timer->setSingleShot(true);
@@ -117,15 +139,11 @@ bool NetworkDispatcher::dispatch(const QUrl &url) {
         timer->start(m_config.timeoutMs);
     }
 
-    m_pendingReplies.insert(reply, PendingReply{timer});
+    m_pendingReplies.insert(reply, PendingReply{timer, probe});
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        handleReplyFinished(reply);
-    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { handleReplyFinished(reply); });
 
-    connect(timer, &QTimer::timeout, this, [this, reply]() {
-        handleTimeout(reply);
-    });
+    connect(timer, &QTimer::timeout, this, [this, reply]() { handleTimeout(reply); });
 
     connect(reply, &QNetworkReply::sslErrors, this, [](const QList<QSslError> &) {
         // SSL errors are never ignored. The reply will fail when finished.
@@ -140,6 +158,7 @@ void NetworkDispatcher::handleReplyFinished(QNetworkReply *reply) {
         return;
     }
 
+    const bool probe = m_pendingReplies.value(reply).probe;
     cleanupReply(reply);
 
     const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -147,37 +166,37 @@ void NetworkDispatcher::handleReplyFinished(QNetworkReply *reply) {
     if (reply->error() == QNetworkReply::NoError) {
         if (httpStatus >= 200 && httpStatus < 300) {
             qCDebug(matomoSdk) << "dispatch succeeded with HTTP" << httpStatus;
-            recordSuccess();
+            recordSuccess(probe);
             emit dispatchFinished(makeResult(DispatchStatus::Value::Success, {}, httpStatus));
         } else {
             qCDebug(matomoSdk) << "dispatch failed with HTTP" << httpStatus;
-            recordFailure(DispatchStatus::Value::NetworkError,
-                          QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
-                          httpStatus);
+            recordFailure(probe);
             emit dispatchFinished(makeResult(DispatchStatus::Value::NetworkError,
-                                             QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
-                                             httpStatus));
+                                             QStringLiteral("Server returned HTTP %1.").arg(httpStatus), httpStatus));
         }
     } else if (reply->error() == QNetworkReply::OperationCanceledError) {
-        // Timeout already handled by handleTimeout; if the reply was aborted
-        // during destruction, do not emit a result.
+        // Timeouts and destruction stop tracking the reply before aborting it, so only an abort
+        // from outside the dispatcher (e.g. on an injected QNetworkAccessManager) reaches this
+        // branch. A cancelled request says nothing about the server: it is not counted as a
+        // failure, but it must release the recovery probe slot or the breaker stays open forever.
         qCDebug(matomoSdk) << "dispatch cancelled";
+        if (probe) {
+            m_probeInFlight = false;
+        }
+        emit dispatchFinished(makeResult(DispatchStatus::Value::NetworkError, QStringLiteral("Request was cancelled.")));
     } else if (reply->error() == QNetworkReply::SslHandshakeFailedError) {
         qCDebug(matomoSdk) << "dispatch failed: SSL error";
-        recordFailure(DispatchStatus::Value::SslError, QStringLiteral("SSL handshake failed."));
+        recordFailure(probe);
         emit dispatchFinished(makeResult(DispatchStatus::Value::SslError, QStringLiteral("SSL handshake failed.")));
     } else if (httpStatus > 0) {
         // HTTP response received but with an error status (e.g. 4xx, 5xx).
         qCDebug(matomoSdk) << "dispatch failed with HTTP" << httpStatus;
-        recordFailure(DispatchStatus::Value::NetworkError,
-                      QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
-                      httpStatus);
+        recordFailure(probe);
         emit dispatchFinished(makeResult(DispatchStatus::Value::NetworkError,
-                                         QStringLiteral("Server returned HTTP %1.").arg(httpStatus),
-                                         httpStatus));
+                                         QStringLiteral("Server returned HTTP %1.").arg(httpStatus), httpStatus));
     } else {
         qCDebug(matomoSdk) << "dispatch failed: network error";
-        recordFailure(DispatchStatus::Value::NetworkError, reply->errorString());
+        recordFailure(probe);
         emit dispatchFinished(makeResult(DispatchStatus::Value::NetworkError, reply->errorString()));
     }
 
@@ -190,31 +209,40 @@ void NetworkDispatcher::handleTimeout(QNetworkReply *reply) {
     }
 
     qCDebug(matomoSdk) << "dispatch timed out";
+    const bool probe = m_pendingReplies.value(reply).probe;
     cleanupReply(reply);
     reply->abort();
 
-    recordFailure(DispatchStatus::Value::Timeout, QStringLiteral("Request timed out."));
+    recordFailure(probe);
     emit dispatchFinished(makeResult(DispatchStatus::Value::Timeout, QStringLiteral("Request timed out.")));
 
-    // The abort will trigger finished(); handleReplyFinished will see
-    // OperationCanceledError and skip emitting a duplicate result.
+    // The abort triggers finished(); handleReplyFinished returns early because the reply is no
+    // longer pending, so no duplicate result is emitted.
     reply->deleteLater();
 }
 
-void NetworkDispatcher::recordSuccess() {
-    m_consecutiveFailures = 0;
-    setOpen(false);
+void NetworkDispatcher::recordSuccess(const bool probe) {
+    if (m_circuitBreakerOpen && !probe) {
+        return;
+    }
+
+    resetCircuitBreaker();
 }
 
-void NetworkDispatcher::recordFailure(const DispatchStatus::Value status, const QString &message, const int httpStatus) {
-    //Following parameters might be use later for better handling
-    Q_UNUSED(status)
-    Q_UNUSED(message)
-    Q_UNUSED(httpStatus)
+void NetworkDispatcher::recordFailure(const bool probe) {
+    // Replies sent before the breaker opened must not change its recovery state.
+    if (m_circuitBreakerOpen && !probe) {
+        return;
+    }
 
     ++m_consecutiveFailures;
 
     if (m_config.maxConsecutiveFailures > 0 && m_consecutiveFailures >= m_config.maxConsecutiveFailures) {
+        m_halfOpen = false;
+        m_probeInFlight = false;
+        if (m_config.circuitBreakerCooldownMs > 0) {
+            m_cooldownTimer->start(m_config.circuitBreakerCooldownMs);
+        }
         setOpen(true);
     }
 }
