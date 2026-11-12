@@ -48,6 +48,7 @@ class RequestBuilderTest : public QObject {
         static void escapesLiteralPlusSoMatomoDoesNotDecodeItAsSpace();
         static void rejectsAbsolutePageViewPath();
         static void rejectsAbsolutePingPath();
+        static void rejectsAbsoluteEventPath();
         static void acceptsLegacyPiwikEndpoint();
         static void dropsEndpointQueryParameters();
         static void rejectsInvalidConfig();
@@ -207,6 +208,12 @@ void RequestBuilderTest::buildsActionUrlFromBase() {
     const auto ping = builder.buildPing(path);
     QVERIFY(ping.accepted());
     QCOMPARE(queryItemValue(queryFor(ping), QStringLiteral("url")), expectedUrl);
+
+    // Events used to always report the base, so every event of a screen shared one URL.
+    const auto event =
+            builder.buildEvent({.category = QStringLiteral("homePage"), .action = QStringLiteral("click"), .path = path});
+    QVERIFY(event.accepted());
+    QCOMPARE(queryItemValue(queryFor(event), QStringLiteral("url")), expectedUrl);
 }
 
 void RequestBuilderTest::configRoundTripsThroughAccessors() {
@@ -357,6 +364,18 @@ void RequestBuilderTest::rejectsAbsolutePageViewPath() {
 
     for (const auto &escapingPath: {QStringLiteral("https://other/x"), QStringLiteral("//other/x")}) {
         const auto result = builder.buildPageView({.path = escapingPath});
+        QVERIFY2(result.result.status == RequestStatus::Value::RequestInvalidPayload, qPrintable(escapingPath));
+        QVERIFY2(result.request.url.isEmpty(), qPrintable(escapingPath));
+    }
+}
+
+void RequestBuilderTest::rejectsAbsoluteEventPath() {
+    // Same contract as page views: an event path must not escape actionUrlBase.
+    const RequestBuilder builder(validConfig());
+
+    for (const auto &escapingPath: {QStringLiteral("https://other/x"), QStringLiteral("//other/x")}) {
+        const auto result = builder.buildEvent(
+                {.category = QStringLiteral("homePage"), .action = QStringLiteral("click"), .path = escapingPath});
         QVERIFY2(result.result.status == RequestStatus::Value::RequestInvalidPayload, qPrintable(escapingPath));
         QVERIFY2(result.request.url.isEmpty(), qPrintable(escapingPath));
     }

@@ -35,16 +35,11 @@ MatomoTracker *MatomoTracker::create(QQmlEngine *engine, QJSEngine *) {
 
 MatomoTracker::MatomoTracker(QObject *parent) :
     QObject(parent),
-    m_settings(
-        QCoreApplication::organizationName().isEmpty()
-            ? QStringLiteral("MatomoQt")
-            : QCoreApplication::organizationName(),
-        QCoreApplication::applicationName().isEmpty()
-            ? QStringLiteral("MatomoTracker")
-            : QCoreApplication::applicationName()),
+    m_settings(QCoreApplication::organizationName().isEmpty() ? QStringLiteral("MatomoQt") : QCoreApplication::organizationName(),
+               QCoreApplication::applicationName().isEmpty() ? QStringLiteral("MatomoTracker")
+                                                             : QCoreApplication::applicationName()),
     m_consentStore(&m_settings),
-    m_clientIdStore(&m_settings) {
-}
+    m_clientIdStore(&m_settings) {}
 
 QUrl MatomoTracker::endpoint() const {
     return m_config.endpoint;
@@ -178,25 +173,23 @@ bool MatomoTracker::trackPageView(const QString &path, const QString &actionName
         return false;
     }
     const auto result = m_tracker->trackPageView({
-        .path = path,
-        .actionName = actionName,
+            .path = path,
+            .actionName = actionName,
     });
     applyRequestResult(result);
     return result.accepted();
 }
 
-bool MatomoTracker::trackEvent(const QString &category,
-                               const QString &action,
-                               const QString &name,
-                               const QVariant &value) {
+bool MatomoTracker::trackEvent(const QString &category, const QString &action, const QString &name, const QVariant &value,
+                               const QString &path) {
     std::optional<double> numericValue;
     if (value.isValid() && !value.isNull()) {
         bool ok = false;
         const auto parsed = value.toDouble(&ok);
         if (!ok) {
             applyRequestResult({
-                .status = RequestStatus::Value::RequestInvalidPayload,
-                .message = QStringLiteral("trackEvent value must be numeric or omitted."),
+                    .status = RequestStatus::Value::RequestInvalidPayload,
+                    .message = QStringLiteral("trackEvent value must be numeric or omitted."),
             });
             return false;
         }
@@ -210,10 +203,11 @@ bool MatomoTracker::trackEvent(const QString &category,
         return false;
     }
     const auto result = m_tracker->trackEvent({
-        .category = category,
-        .action = action,
-        .name = name,
-        .value = numericValue,
+            .category = category,
+            .action = action,
+            .name = name,
+            .value = numericValue,
+            .path = path,
     });
     applyRequestResult(result);
     return result.accepted();
@@ -266,9 +260,7 @@ void MatomoTracker::ensureTracker() {
     m_tracker->setEnabled(m_enabled);
 
     connect(m_tracker, &Tracker::enabledChanged, this, &MatomoTracker::enabledChanged);
-    connect(m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState::Value) {
-        emit consentStateChanged();
-    });
+    connect(m_tracker, &Tracker::consentStateChanged, this, [this](ConsentState::Value) { emit consentStateChanged(); });
     connect(m_tracker, &Tracker::dispatchFinished, this, &MatomoTracker::applyDispatchResult);
 }
 

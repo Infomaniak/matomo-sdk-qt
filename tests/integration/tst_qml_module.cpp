@@ -80,9 +80,7 @@ class TestHttpServer : public QObject {
             while (m_server->hasPendingConnections()) {
                 QTcpSocket *socket = m_server->nextPendingConnection();
                 connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
-                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
-                    readRequest(socket);
-                });
+                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() { readRequest(socket); });
             }
         }
 
@@ -100,19 +98,21 @@ class TestHttpServer : public QObject {
             m_requestCount++;
 
             if (m_mode == Mode::Respond200) {
-                socket->write("HTTP/1.1 200 OK\r\n"
-                              "Content-Type: text/plain\r\n"
-                              "Content-Length: 2\r\n"
-                              "Connection: close\r\n"
-                              "\r\n"
-                              "OK");
+                socket->write(
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: 2\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                        "OK");
             } else {
-                socket->write("HTTP/1.1 500 Internal Server Error\r\n"
-                              "Content-Type: text/plain\r\n"
-                              "Content-Length: 5\r\n"
-                              "Connection: close\r\n"
-                              "\r\n"
-                              "ERROR");
+                socket->write(
+                        "HTTP/1.1 500 Internal Server Error\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: 5\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                        "ERROR");
             }
             socket->disconnectFromHost();
         }
@@ -194,7 +194,8 @@ QtObject {
         MatomoTracker.privacyMode = PrivacyMode.RequiresConsent
     }
 }
-)").arg(server.url().toString());
+)")
+                                      .arg(server.url().toString());
 
     QQmlComponent component(&engine);
     component.setData(qmlSource.toUtf8(), QUrl(QStringLiteral("inmemory:/tst_qml_module.qml")));
@@ -208,11 +209,8 @@ QtObject {
     QVERIFY(tracker != nullptr);
 
     bool acceptedBeforeConsent = false;
-    QVERIFY(QMetaObject::invokeMethod(tracker,
-                                      "trackPageView",
-                                      Q_RETURN_ARG(bool, acceptedBeforeConsent),
-                                      Q_ARG(QString, QStringLiteral("settings")),
-                                      Q_ARG(QString, QStringLiteral("Settings"))));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "trackPageView", Q_RETURN_ARG(bool, acceptedBeforeConsent),
+                                      Q_ARG(QString, QStringLiteral("settings")), Q_ARG(QString, QStringLiteral("Settings"))));
     QVERIFY(!acceptedBeforeConsent);
     QCOMPARE(server.requestCount(), 0);
 
@@ -222,54 +220,44 @@ QtObject {
 
     const QUrl configuredEndpoint = tracker->property("endpoint").toUrl();
     QSignalSpy endpointSpy(tracker, SIGNAL(endpointChanged()));
-    QTest::ignoreMessage(QtWarningMsg,
-                         "MatomoTracker: endpoint cannot be changed after the tracker is initialized; ignoring.");
+    QTest::ignoreMessage(QtWarningMsg, "MatomoTracker: endpoint cannot be changed after the tracker is initialized; ignoring.");
     QVERIFY(tracker->setProperty("endpoint", QUrl(QStringLiteral("https://other.example.com/matomo.php"))));
     QCOMPARE(tracker->property("endpoint").toUrl(), configuredEndpoint);
     QCOMPARE(endpointSpy.count(), 0);
 
     bool acceptedAfterConsent = false;
-    QVERIFY(QMetaObject::invokeMethod(tracker,
-                                      "trackEvent",
-                                      Q_RETURN_ARG(bool, acceptedAfterConsent),
-                                      Q_ARG(QString, QStringLiteral("preferences")),
-                                      Q_ARG(QString, QStringLiteral("click")),
-                                      Q_ARG(QString, QStringLiteral("saveButton")),
-                                      Q_ARG(QVariant, QVariant(1.0))));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "trackEvent", Q_RETURN_ARG(bool, acceptedAfterConsent),
+                                      Q_ARG(QString, QStringLiteral("preferences")), Q_ARG(QString, QStringLiteral("click")),
+                                      Q_ARG(QString, QStringLiteral("saveButton")), Q_ARG(QVariant, QVariant(1.0)),
+                                      Q_ARG(QString, QStringLiteral("preferencesPage"))));
     QVERIFY2(acceptedAfterConsent, qPrintable(tracker->property("lastRequestMessage").toString()));
     QTRY_COMPARE_WITH_TIMEOUT(server.requestCount(), 1, 5000);
     QTRY_COMPARE_WITH_TIMEOUT(root->property("observedDispatchCount").toInt(), 1, 5000);
     QVERIFY(root->property("observedDispatchSucceeded").toBool());
-    QCOMPARE(root->property("observedDispatchStatus").toInt(),
-             static_cast<int>(MatomoQt::DispatchStatus::Value::Success));
+    QCOMPARE(root->property("observedDispatchStatus").toInt(), static_cast<int>(MatomoQt::DispatchStatus::Value::Success));
     QCOMPARE(root->property("observedDispatchHttpStatus").toInt(), 200);
     QVERIFY(tracker->property("hasDispatchResult").toBool());
-    QCOMPARE(tracker->property("lastDispatchStatus").toInt(),
-             static_cast<int>(MatomoQt::DispatchStatus::Value::Success));
+    QCOMPARE(tracker->property("lastDispatchStatus").toInt(), static_cast<int>(MatomoQt::DispatchStatus::Value::Success));
     QCOMPARE(tracker->property("lastDispatchHttpStatus").toInt(), 200);
 
     const QUrl sentUrl = QUrl(QStringLiteral("http://127.0.0.1%1").arg(server.lastRequestPath()));
     const QUrlQuery sentQuery(sentUrl);
     QCOMPARE(sentQuery.queryItemValue(QStringLiteral("e_c"), QUrl::FullyDecoded), QStringLiteral("preferences"));
     QCOMPARE(sentQuery.queryItemValue(QStringLiteral("e_a"), QUrl::FullyDecoded), QStringLiteral("click"));
+    QCOMPARE(sentQuery.queryItemValue(QStringLiteral("url"), QUrl::FullyDecoded),
+             QStringLiteral("app://qml-module-test/preferencesPage"));
 
     server.setMode(TestHttpServer::Mode::Respond500);
-    QVERIFY(QMetaObject::invokeMethod(tracker,
-                                      "trackEvent",
-                                      Q_RETURN_ARG(bool, acceptedAfterConsent),
-                                      Q_ARG(QString, QStringLiteral("preferences")),
-                                      Q_ARG(QString, QStringLiteral("retry")),
-                                      Q_ARG(QString, QString()),
-                                      Q_ARG(QVariant, QVariant())));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "trackEvent", Q_RETURN_ARG(bool, acceptedAfterConsent),
+                                      Q_ARG(QString, QStringLiteral("preferences")), Q_ARG(QString, QStringLiteral("retry")),
+                                      Q_ARG(QString, QString()), Q_ARG(QVariant, QVariant())));
     QVERIFY(acceptedAfterConsent);
     QTRY_COMPARE_WITH_TIMEOUT(root->property("observedDispatchCount").toInt(), 2, 5000);
     QVERIFY(!root->property("observedDispatchSucceeded").toBool());
-    QCOMPARE(root->property("observedDispatchStatus").toInt(),
-             static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
+    QCOMPARE(root->property("observedDispatchStatus").toInt(), static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
     QCOMPARE(root->property("observedDispatchHttpStatus").toInt(), 500);
     QVERIFY(!root->property("observedDispatchMessage").toString().isEmpty());
-    QCOMPARE(tracker->property("lastDispatchStatus").toInt(),
-             static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
+    QCOMPARE(tracker->property("lastDispatchStatus").toInt(), static_cast<int>(MatomoQt::DispatchStatus::Value::NetworkError));
     QCOMPARE(tracker->property("lastDispatchHttpStatus").toInt(), 500);
     QVERIFY(!tracker->property("lastDispatchMessage").toString().isEmpty());
 }
@@ -286,8 +274,7 @@ void QmlModuleIntegrationTest::qmlTrackerRecoversFromIncompleteConfig() {
     addQmlImportPaths(&engine);
 
     QQmlComponent component(&engine);
-    component.setData("import QtQml\nimport MatomoQt 1.0\nQtObject {}\n",
-                      QUrl(QStringLiteral("inmemory:/tst_qml_recovery.qml")));
+    component.setData("import QtQml\nimport MatomoQt 1.0\nQtObject {}\n", QUrl(QStringLiteral("inmemory:/tst_qml_recovery.qml")));
     QTRY_VERIFY2(component.isReady() || component.isError(), qPrintable(component.errorString()));
     QVERIFY2(component.isReady(), qPrintable(component.errorString()));
     std::unique_ptr<QObject> root(component.create());
@@ -299,11 +286,8 @@ void QmlModuleIntegrationTest::qmlTrackerRecoversFromIncompleteConfig() {
     QVERIFY(tracker->setProperty("siteId", 1));
 
     bool accepted = true;
-    QVERIFY(QMetaObject::invokeMethod(tracker,
-                                      "trackPageView",
-                                      Q_RETURN_ARG(bool, accepted),
-                                      Q_ARG(QString, QStringLiteral("settings")),
-                                      Q_ARG(QString, QStringLiteral("Settings"))));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "trackPageView", Q_RETURN_ARG(bool, accepted),
+                                      Q_ARG(QString, QStringLiteral("settings")), Q_ARG(QString, QStringLiteral("Settings"))));
     QVERIFY(!accepted);
     QCOMPARE(tracker->property("lastRequestStatus").toInt(),
              static_cast<int>(MatomoQt::RequestStatus::Value::RequestInvalidConfig));
@@ -311,13 +295,9 @@ void QmlModuleIntegrationTest::qmlTrackerRecoversFromIncompleteConfig() {
 
     QVERIFY(tracker->setProperty("actionUrlBase", QUrl(QStringLiteral("app://qml-recovery-test/"))));
     QVERIFY(QMetaObject::invokeMethod(tracker, "grantConsent"));
-    QVERIFY(QMetaObject::invokeMethod(tracker,
-                                      "trackEvent",
-                                      Q_RETURN_ARG(bool, accepted),
-                                      Q_ARG(QString, QStringLiteral("preferences")),
-                                      Q_ARG(QString, QStringLiteral("recover")),
-                                      Q_ARG(QString, QString()),
-                                      Q_ARG(QVariant, QVariant())));
+    QVERIFY(QMetaObject::invokeMethod(tracker, "trackEvent", Q_RETURN_ARG(bool, accepted),
+                                      Q_ARG(QString, QStringLiteral("preferences")), Q_ARG(QString, QStringLiteral("recover")),
+                                      Q_ARG(QString, QString()), Q_ARG(QVariant, QVariant())));
     QVERIFY2(accepted, qPrintable(tracker->property("lastRequestMessage").toString()));
     QTRY_COMPARE_WITH_TIMEOUT(server.requestCount(), 1, 5000);
 }

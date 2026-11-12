@@ -107,10 +107,8 @@ class MatomoTracker : public QObject {
         [[nodiscard]] QString lastDispatchMessage() const;
 
         Q_INVOKABLE bool trackPageView(const QString &path, const QString &actionName = {});
-        Q_INVOKABLE bool trackEvent(const QString &category,
-                                    const QString &action,
-                                    const QString &name = {},
-                                    const QVariant &value = {});
+        Q_INVOKABLE bool trackEvent(const QString &category, const QString &action, const QString &name = {},
+                                    const QVariant &value = {}, const QString &path = {});
         Q_INVOKABLE bool sendPing();
         Q_INVOKABLE void grantConsent();
         Q_INVOKABLE void denyConsent();

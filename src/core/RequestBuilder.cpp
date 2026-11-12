@@ -205,7 +205,15 @@ RequestBuildResult RequestBuilder::buildEvent(const Event &event, const RequestB
         return invalidPayload(QStringLiteral("Event category, action, value and custom dimensions must be valid."));
     }
 
-    return buildRequest(m_config, m_config.actionUrlBase.toString(), options, [&event](QUrlQuery *query) {
+    QString actionUrl = m_config.actionUrlBase.toString();
+    if (const QUrl actionReference(event.path.trimmed()); !actionReference.isEmpty()) {
+        if (!isRelativeApplicationPath(actionReference)) {
+            return invalidPayload(QStringLiteral("Event path must be a relative application path."));
+        }
+        actionUrl = actionUrlFor(m_config.actionUrlBase, actionReference);
+    }
+
+    return buildRequest(m_config, actionUrl, options, [&event](QUrlQuery *query) {
         query->addQueryItem(QStringLiteral("ca"), QStringLiteral("1"));
         query->addQueryItem(QStringLiteral("e_c"), event.category.trimmed());
         query->addQueryItem(QStringLiteral("e_a"), event.action.trimmed());

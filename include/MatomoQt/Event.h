@@ -35,6 +35,13 @@ struct MATOMOQT_CORE_EXPORT Event {
         std::optional<double> value;
         QList<CustomDimension> customDimensions;
 
+        /** Optional application path resolved under TrackerConfig::actionUrlBase to build `url`.
+         *
+         *  Leave empty to report the action URL base itself. Like a page-view path, it must not
+         *  carry its own scheme or authority.
+         */
+        QString path;
+
         /** Returns true when the required Matomo event fields are present. */
         [[nodiscard]] bool isValid() const;
 };
