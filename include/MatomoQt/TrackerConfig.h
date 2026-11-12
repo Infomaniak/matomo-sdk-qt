@@ -58,6 +58,13 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          */
         QString userAgent;
 
+        /** Screen resolution sent as Matomo's `res` parameter, e.g. `1920x1080`.
+         *
+         *  Leave empty to omit the res parameter.  The core library only depends on
+         *  QtCore, so the host application reads the value from its own screen API.
+         */
+        QString screenResolution;
+
         /** Network dispatcher configuration (timeout, circuit breaker). */
         NetworkDispatcherConfig networkDispatcherConfig;
 

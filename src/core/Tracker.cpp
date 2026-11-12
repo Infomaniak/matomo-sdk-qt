@@ -290,7 +290,7 @@ RequestBuildOptions Tracker::buildOptions() const {
     options.clientId = m_clientIdStore.clientId();
     options.userAgent = m_config.userAgent;
     options.language = QLocale().name();
-    options.screenResolution = {};
+    options.screenResolution = m_config.screenResolution;
     return options;
 }
 

@@ -43,8 +43,9 @@ class TestHttpServer : public QObject {
             Respond500,
         };
 
-        explicit TestHttpServer(Mode mode = Mode::Respond200, QObject *parent = nullptr)
-            : QObject(parent), m_mode(mode) {}
+        explicit TestHttpServer(Mode mode = Mode::Respond200, QObject *parent = nullptr) :
+            QObject(parent),
+            m_mode(mode) {}
 
         ~TestHttpServer() override {
             if (m_server != nullptr) {
@@ -80,9 +81,7 @@ class TestHttpServer : public QObject {
             while (m_server->hasPendingConnections()) {
                 QTcpSocket *socket = m_server->nextPendingConnection();
                 connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
-                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
-                    readRequest(socket);
-                });
+                connect(socket, &QTcpSocket::readyRead, this, [this, socket]() { readRequest(socket); });
             }
         }
 
@@ -100,19 +99,21 @@ class TestHttpServer : public QObject {
             m_requestCount++;
 
             if (m_mode == Mode::Respond200) {
-                socket->write("HTTP/1.1 200 OK\r\n"
-                              "Content-Type: text/plain\r\n"
-                              "Content-Length: 2\r\n"
-                              "Connection: close\r\n"
-                              "\r\n"
-                              "OK");
+                socket->write(
+                        "HTTP/1.1 200 OK\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: 2\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                        "OK");
             } else {
-                socket->write("HTTP/1.1 500 Internal Server Error\r\n"
-                              "Content-Type: text/plain\r\n"
-                              "Content-Length: 5\r\n"
-                              "Connection: close\r\n"
-                              "\r\n"
-                              "Error");
+                socket->write(
+                        "HTTP/1.1 500 Internal Server Error\r\n"
+                        "Content-Type: text/plain\r\n"
+                        "Content-Length: 5\r\n"
+                        "Connection: close\r\n"
+                        "\r\n"
+                        "Error");
             }
             socket->disconnectFromHost();
         }
@@ -133,8 +134,8 @@ TrackerConfig validConfig(const QUrl &endpoint) {
 }
 
 struct DefaultStores {
-    InMemoryConsentStore consent;
-    InMemoryClientIdStore clientId;
+        InMemoryConsentStore consent;
+        InMemoryClientIdStore clientId;
 };
 
 QUrlQuery queryFor(const QString &requestPath) {
@@ -184,6 +185,7 @@ class TrackerIntegrationTest : public QObject {
         void pageViewIdClearedAfterConsentDenial();
         void forceNewVisitAddsNewVisitParam();
         void customDimensionAppearsInRequest();
+        void screenResolutionIsSentOnlyWhenConfigured();
         void clearCustomDimensionRemovesFromRequest();
         void pingDoesNotCarryCustomDimensions();
         void runtimeStatsAreAccurate();
@@ -233,9 +235,9 @@ void TrackerIntegrationTest::trackEventDispatchesToServer() {
 
     QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
     const auto result = tracker.trackEvent({
-        .category = QStringLiteral("preferences"),
-        .action = QStringLiteral("click"),
-        .name = QStringLiteral("saveButton"),
+            .category = QStringLiteral("preferences"),
+            .action = QStringLiteral("click"),
+            .name = QStringLiteral("saveButton"),
     });
 
     QVERIFY(result.accepted());
@@ -485,6 +487,30 @@ void TrackerIntegrationTest::customDimensionAppearsInRequest() {
     QCOMPARE(queryValue(query, QStringLiteral("dimension3")), QStringLiteral("beta"));
 }
 
+void TrackerIntegrationTest::screenResolutionIsSentOnlyWhenConfigured() {
+    // The tracker used to drop the resolution, so hosts could not report it at all.
+    // An empty value must still omit `res`, to keep it opt-in.
+    for (const auto &resolution: {QStringLiteral("1920x1080"), QString()}) {
+        TestHttpServer server;
+        QVERIFY(server.start());
+
+        auto config = validConfig(server.url());
+        config.screenResolution = resolution;
+
+        DefaultStores stores;
+        Tracker tracker(config, stores.consent, stores.clientId);
+        tracker.setConsentState(ConsentState::Value::Granted);
+
+        QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
+        (void) tracker.trackPageView({.path = QStringLiteral("settings")});
+        QVERIFY(dispatchSpy.wait(5000));
+
+        const auto query = queryFor(server.lastRequestPath());
+        QCOMPARE(hasQueryItem(query, QStringLiteral("res")), !resolution.isEmpty());
+        QCOMPARE(queryValue(query, QStringLiteral("res")), resolution);
+    }
+}
+
 void TrackerIntegrationTest::clearCustomDimensionRemovesFromRequest() {
     TestHttpServer server;
     QVERIFY(server.start());
@@ -642,8 +668,7 @@ void TrackerIntegrationTest::circuitBreakerDoesNotCommitUndispatchedState() {
     const auto blockedResult = tracker.trackPageView({.path = QStringLiteral("not-dispatched")});
     QVERIFY(blockedResult.accepted());
     QCOMPARE(dispatchSpy.count(), 1);
-    QCOMPARE(dispatchSpy.constFirst().constFirst().value<DispatchResult>().status,
-             DispatchStatus::Value::CircuitBreakerOpen);
+    QCOMPARE(dispatchSpy.constFirst().constFirst().value<DispatchResult>().status, DispatchStatus::Value::CircuitBreakerOpen);
     QCOMPARE(server.requestCount(), 1);
     QCOMPARE(tracker.stats().sentCount, 1);
 
