@@ -89,7 +89,10 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
          */
         [[nodiscard]] bool isCircuitBreakerOpen() const;
 
-        /** Resets the circuit breaker to the closed state and cancels automatic recovery. */
+        /** Resets the circuit breaker to the closed state and cancels automatic recovery.
+         *
+         * Replies still pending keep reporting their result but no longer affect the breaker.
+         */
         void resetCircuitBreaker();
 
         /** Dispatches a GET request to @p url.
@@ -114,14 +117,14 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
     private:
         void handleReplyFinished(QNetworkReply *reply);
         void handleTimeout(QNetworkReply *reply);
-        void recordSuccess(bool probe);
-        void recordFailure(bool probe);
+        void recordSuccess(quint64 generation);
+        void recordFailure(quint64 generation);
         void setOpen(bool open);
         void cleanupReply(QNetworkReply *reply);
 
         struct PendingReply {
                 QTimer *timer = nullptr;
-                bool probe = false;
+                quint64 generation = 0;
         };
 
         NetworkDispatcherConfig m_config;
@@ -131,6 +134,9 @@ class MATOMOQT_CORE_EXPORT NetworkDispatcher : public QObject {
         bool m_circuitBreakerOpen = false;
         bool m_halfOpen = false;
         bool m_probeInFlight = false;
+        // Incremented whenever the breaker opens or is reset: only replies dispatched in the
+        // current generation affect the breaker, so stale replies cannot reopen or close it.
+        quint64 m_generation = 0;
         QHash<QNetworkReply *, PendingReply> m_pendingReplies;
 };
 

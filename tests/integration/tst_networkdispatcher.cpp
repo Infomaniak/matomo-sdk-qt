@@ -189,6 +189,8 @@ class NetworkDispatcherTest : public QObject {
         void invalidUrlDoesNotConsumeRecoveryProbe();
         void cancelledProbeReleasesRecoverySlot();
         void enablingCooldownRecoversOpenBreaker();
+        void staleFailureCannotReopenClosedBreaker_data();
+        void staleFailureCannotReopenClosedBreaker();
         void cacheBusterRandIsAdded();
         void customNetworkAccessManagerIsUsed();
         void configDefaultsAreSafe();
@@ -853,6 +855,63 @@ void NetworkDispatcherTest::enablingCooldownRecoversOpenBreaker() {
     QTRY_COMPARE(finishedSpy.count(), 2);
     QCOMPARE(finishedSpy.last().at(0).value<DispatchResult>().status, DispatchStatus::Value::Success);
     QVERIFY(!dispatcher.isCircuitBreakerOpen());
+}
+
+void NetworkDispatcherTest::staleFailureCannotReopenClosedBreaker_data() {
+    QTest::addColumn<bool>("manualReset");
+    QTest::newRow("sent-before-opening-then-probe-succeeds") << false;
+    QTest::newRow("probe-pending-during-manual-reset") << true;
+}
+
+void NetworkDispatcherTest::staleFailureCannotReopenClosedBreaker() {
+    // Catches a closed breaker reopened by a reply sent before it last opened or was reset: with
+    // maxConsecutiveFailures = 1, that late failure blocked healthy requests for a whole cooldown.
+    QFETCH(bool, manualReset);
+    TestHttpServer staleServer(TestHttpServer::Mode::HangWithoutResponse);
+    TestHttpServer server(TestHttpServer::Mode::Respond500);
+    QVERIFY(staleServer.start());
+    QVERIFY(server.start());
+    NetworkDispatcherConfig config;
+    config.timeoutMs = 0;
+    config.maxConsecutiveFailures = 1;
+    config.circuitBreakerCooldownMs = 20;
+    NetworkDispatcher dispatcher;
+    dispatcher.setConfig(config);
+    QSignalSpy finishedSpy(&dispatcher, &NetworkDispatcher::dispatchFinished);
+    QSignalSpy breakerSpy(&dispatcher, &NetworkDispatcher::circuitBreakerChanged);
+
+    if (!manualReset) {
+        QVERIFY(dispatcher.dispatch(staleServer.url()));
+        QTRY_COMPARE(staleServer.requestCount(), 1);
+    }
+    QVERIFY(dispatcher.dispatch(server.url()));
+    QTRY_COMPARE(finishedSpy.count(), 1);
+    QVERIFY(dispatcher.isCircuitBreakerOpen());
+    QTest::qWait(50);
+
+    if (manualReset) {
+        QVERIFY(dispatcher.dispatch(staleServer.url())); // Recovery probe.
+        QTRY_COMPARE(staleServer.requestCount(), 1);
+        dispatcher.resetCircuitBreaker();
+    } else {
+        server.setMode(TestHttpServer::Mode::Respond200);
+        QVERIFY(dispatcher.dispatch(server.url())); // Recovery probe.
+        QTRY_COMPARE(finishedSpy.count(), 2);
+    }
+    QVERIFY(!dispatcher.isCircuitBreakerOpen());
+    QCOMPARE(breakerSpy.count(), 2);
+
+    const qsizetype resultsBeforeStaleFailure = finishedSpy.count();
+    staleServer.respondToPendingRequests(TestHttpServer::Mode::Respond500);
+    QTRY_COMPARE(finishedSpy.count(), resultsBeforeStaleFailure + 1);
+    QCOMPARE(finishedSpy.last().at(0).value<DispatchResult>().status, DispatchStatus::Value::NetworkError);
+    QVERIFY(!dispatcher.isCircuitBreakerOpen());
+    QCOMPARE(breakerSpy.count(), 2);
+
+    server.setMode(TestHttpServer::Mode::Respond200);
+    QVERIFY(dispatcher.dispatch(server.url()));
+    QTRY_COMPARE(finishedSpy.count(), resultsBeforeStaleFailure + 2);
+    QCOMPARE(finishedSpy.last().at(0).value<DispatchResult>().status, DispatchStatus::Value::Success);
 }
 
 void NetworkDispatcherTest::cacheBusterRandIsAdded() {
