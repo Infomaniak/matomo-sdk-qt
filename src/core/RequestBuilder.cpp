@@ -50,6 +50,31 @@ bool isRelativeApplicationPath(const QUrl &reference) {
     return reference.scheme().isEmpty() && reference.authority().isEmpty();
 }
 
+/**
+ * Returns true for a base made of a scheme and an empty authority, such as `app://`.
+ *
+ * QUrl::resolved() returns an empty URL for such a base, and promoting the path to the host
+ * through QUrl would lowercase it, so these bases are used as a plain prefix instead.
+ */
+bool isSchemeOnlyBase(const QUrl &base) {
+    // Compared on the serialized form: whether QUrl reports an empty or a null authority for
+    // `app://` differs between Qt versions.
+    return !base.scheme().isEmpty() && base.toString() == base.scheme() + QStringLiteral("://");
+}
+
+QString actionUrlFor(const QUrl &base, const QUrl &reference) {
+    if (isSchemeOnlyBase(base)) {
+        // A leading slash would produce an empty authority (`app:///home`), not `app://home`.
+        QString path = reference.toString();
+        while (path.startsWith(QLatin1Char('/'))) {
+            path.remove(0, 1);
+        }
+        return base.toString() + path;
+    }
+
+    return base.resolved(reference).toString();
+}
+
 bool hasValidClientId(const QString &clientId) {
     static const QRegularExpression clientIdPattern(QStringLiteral("^[0-9A-Fa-f]{16}$"));
     return clientId.isEmpty() || clientIdPattern.match(clientId).hasMatch();
@@ -92,7 +117,7 @@ concept PayloadParameterAppender = requires(AddPayloadParameters addPayloadParam
 };
 
 template<PayloadParameterAppender AddPayloadParameters>
-RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionUrl, const RequestBuildOptions &options,
+RequestBuildResult buildRequest(const TrackerConfig &config, const QString &actionUrl, const RequestBuildOptions &options,
                                 AddPayloadParameters addPayloadParameters) {
     if (!config.isValid()) {
         return invalidConfig(QStringLiteral("Tracker endpoint, action URL base and site ID are required."));
@@ -111,7 +136,7 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QUrl &actionU
     query.addQueryItem(QStringLiteral("idsite"), QString::number(config.siteId));
     query.addQueryItem(QStringLiteral("rec"), QStringLiteral("1"));
     query.addQueryItem(QStringLiteral("apiv"), QStringLiteral("1"));
-    query.addQueryItem(QStringLiteral("url"), actionUrl.toString());
+    query.addQueryItem(QStringLiteral("url"), actionUrl);
 
     if (!options.clientId.isEmpty()) {
         query.addQueryItem(QStringLiteral("_id"), options.clientId);
@@ -162,7 +187,7 @@ RequestBuildResult RequestBuilder::buildPageView(const PageView &pageView, const
         return invalidPayload(QStringLiteral("Page view path must be a relative application path."));
     }
 
-    return buildRequest(m_config, m_config.actionUrlBase.resolved(actionReference), options, [&pageView](QUrlQuery *query) {
+    return buildRequest(m_config, actionUrlFor(m_config.actionUrlBase, actionReference), options, [&pageView](QUrlQuery *query) {
         if (!pageView.actionName.trimmed().isEmpty()) {
             query->addQueryItem(QStringLiteral("action_name"), pageView.actionName.trimmed());
         }
@@ -180,7 +205,7 @@ RequestBuildResult RequestBuilder::buildEvent(const Event &event, const RequestB
         return invalidPayload(QStringLiteral("Event category, action, value and custom dimensions must be valid."));
     }
 
-    return buildRequest(m_config, m_config.actionUrlBase, options, [&event](QUrlQuery *query) {
+    return buildRequest(m_config, m_config.actionUrlBase.toString(), options, [&event](QUrlQuery *query) {
         query->addQueryItem(QStringLiteral("ca"), QStringLiteral("1"));
         query->addQueryItem(QStringLiteral("e_c"), event.category.trimmed());
         query->addQueryItem(QStringLiteral("e_a"), event.action.trimmed());
@@ -211,7 +236,7 @@ RequestBuildResult RequestBuilder::buildPing(const QString &path, const RequestB
         return invalidPayload(QStringLiteral("Tracking request path must be a relative application path."));
     }
 
-    return buildRequest(m_config, m_config.actionUrlBase.resolved(actionReference), options, [](QUrlQuery *query) {
+    return buildRequest(m_config, actionUrlFor(m_config.actionUrlBase, actionReference), options, [](QUrlQuery *query) {
         query->addQueryItem(QStringLiteral("ping"), QStringLiteral("1"));
         return RequestBuildResult{RequestResult{RequestStatus::Value::RequestAccepted, {}}, {}};
     });

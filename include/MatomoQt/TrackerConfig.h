@@ -33,6 +33,13 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
         using SiteId = qint32;
 
         QUrl endpoint;
+
+        /** Absolute URL that page-view and event paths are resolved against to build Matomo's `url`.
+         *
+         *  A base made of a scheme only, such as `app://`, is used as a prefix: the path
+         *  `homePage` gives `app://homePage`, with its case preserved. Any other base follows
+         *  standard URL resolution, e.g. `app://desktop/` and `homePage` give `app://desktop/homePage`.
+         */
         QUrl actionUrlBase;
         SiteId siteId = 0;
         PrivacyMode::Value privacyMode = PrivacyMode::Value::RequiresConsent;

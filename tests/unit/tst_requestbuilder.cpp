@@ -35,6 +35,8 @@ class RequestBuilderTest : public QObject {
         static void buildsPageViewQuery();
         static void buildsEventQuery();
         static void buildsPingQuery();
+        static void buildsActionUrlFromBase_data();
+        static void buildsActionUrlFromBase();
         static void configRoundTripsThroughAccessors();
         static void includesValidClientId();
         static void rejectsInvalidClientId();
@@ -172,6 +174,39 @@ void RequestBuilderTest::buildsPingQuery() {
     QCOMPARE(queryItemValue(query, QStringLiteral("url")), QStringLiteral("kdrive://app/settings/account"));
     QCOMPARE(queryItemValue(query, QStringLiteral("ping")), QStringLiteral("1"));
     QVERIFY(!hasQueryItem(query, QStringLiteral("ca")));
+}
+
+void RequestBuilderTest::buildsActionUrlFromBase_data() {
+    QTest::addColumn<QString>("base");
+    QTest::addColumn<QString>("path");
+    QTest::addColumn<QString>("expectedUrl");
+
+    // `app://` used to resolve to an empty URL, so requests were accepted and sent without a page URL.
+    // The path must keep its case: going through QUrl would lowercase it as a host.
+    QTest::newRow("scheme-only") << "kdrive://" << "homePage" << "kdrive://homePage";
+    QTest::newRow("scheme-only-nested") << "kdrive://" << "settingsPage/general" << "kdrive://settingsPage/general";
+    QTest::newRow("scheme-only-leading-slash") << "kdrive://" << "/homePage" << "kdrive://homePage";
+    QTest::newRow("host-with-slash") << "kdrive://app/" << "homePage" << "kdrive://app/homePage";
+    QTest::newRow("host-without-slash") << "kdrive://app" << "homePage" << "kdrive://app/homePage";
+    QTest::newRow("https-directory") << "https://example.com/app/" << "homePage" << "https://example.com/app/homePage";
+}
+
+void RequestBuilderTest::buildsActionUrlFromBase() {
+    QFETCH(QString, base);
+    QFETCH(QString, path);
+    QFETCH(QString, expectedUrl);
+
+    auto config = validConfig();
+    config.actionUrlBase = QUrl(base);
+    const RequestBuilder builder(config);
+
+    const auto pageView = builder.buildPageView({.path = path});
+    QVERIFY(pageView.accepted());
+    QCOMPARE(queryItemValue(queryFor(pageView), QStringLiteral("url")), expectedUrl);
+
+    const auto ping = builder.buildPing(path);
+    QVERIFY(ping.accepted());
+    QCOMPARE(queryItemValue(queryFor(ping), QStringLiteral("url")), expectedUrl);
 }
 
 void RequestBuilderTest::configRoundTripsThroughAccessors() {
