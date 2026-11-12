@@ -5,14 +5,15 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://isocpp.org/)
 [![CMake](https://img.shields.io/badge/CMake-supported-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![Privacy](https://img.shields.io/badge/privacy-GDPR%20%2B%20Swiss%20FADP%2FnLPD-2F855A)](#privacy-model)
-[![Status](https://img.shields.io/badge/status-early%20development-F59E0B)](#scope)
+[![Status](https://img.shields.io/badge/status-stable-2F855A)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 C++ Qt SDK for the Matomo Tracking HTTP API.
 
-> Status: early development. The SDK exposes C++ and QML targets, sends
+> Status: stable since 1.0.0. The SDK exposes C++ and QML targets, sends
 > Matomo Tracking HTTP API requests asynchronously and includes a runnable QML
-> example. The public API may still evolve before the first stable release.
+> example. The public API follows [Semantic Versioning](https://semver.org/);
+> see [CHANGELOG.md](CHANGELOG.md).
 
 ## Project Context
 
@@ -67,6 +68,20 @@ recovery probe. Set it to `0` to require `resetCircuitBreaker()` instead.
 `Tracker` orchestrates privacy checks, request building and asynchronous
 network dispatching. Tracking calls report local acceptance synchronously,
 while `dispatchFinished()` reports the eventual network result.
+
+### Action URLs
+
+Matomo's `url` parameter is built from `TrackerConfig::actionUrlBase` and the
+path of the page view, ping or event:
+
+| `actionUrlBase`   | Path       | `url`                    |
+|-------------------|------------|--------------------------|
+| `app://desktop/`  | `homePage` | `app://desktop/homePage` |
+| `app://`          | `homePage` | `app://homePage`         |
+
+A base made of a scheme only is used as a prefix and keeps the path's case.
+Events report the base itself unless `Event::path` is set. Paths must be
+relative: a path with its own scheme or authority is rejected.
 
 ## Non-Goals
 
@@ -204,7 +219,8 @@ Button {
         // Only after explicit user consent:
         MatomoTracker.grantConsent()
         MatomoTracker.trackPageView("/settings", "Settings")
-        MatomoTracker.trackEvent("preferences", "click", "saveButton", 1)
+        // The optional last argument reports the event under app://my-app/settings.
+        MatomoTracker.trackEvent("preferences", "click", "saveButton", 1, "settings")
     }
 }
 ```
@@ -223,6 +239,29 @@ The SDK should support:
 - minimal data collection by default;
 - deterministic tests for privacy-sensitive behavior.
 
+### Data Sent
+
+Each request carries only the following Matomo Tracking HTTP API parameters:
+
+| Parameter | Content | When |
+|---|---|---|
+| `idsite`, `rec`, `apiv` | Site ID and protocol flags | Always |
+| `url` | Action URL, see [Action URLs](#action-urls) | Always |
+| `_id` | Random 16-hex client ID from the `ClientIdStore`, cleared on denial or withdrawal | Always |
+| `lang` | Name of the default `QLocale`, e.g. `fr_FR` | Always |
+| `ua` | `TrackerConfig::userAgent` | When configured |
+| `res` | `TrackerConfig::screenResolution` | When configured |
+| `action_name` | Page view action name | Page views, when set |
+| `ca`, `e_c`, `e_a`, `e_n`, `e_v` | Event category, action, name and value | Events |
+| `dimensionN` | Custom dimensions from the config and the call | When set; not on pings |
+| `pv_id` | Random ID of the current page view | Page views, then events and pings that follow one |
+| `new_visit` | `1` after `forceNewVisit()` | Once, when requested |
+| `ping` | `1` | Pings |
+| `rand` | Random cache-buster | Always |
+
+The SDK never adds file paths, account identifiers or other application data
+on its own; anything else comes from the values the host passes in.
+
 The host application remains responsible for its legal basis, user notice,
 consent or opt-out UX, Matomo server settings, retention policy and data subject
 workflows. Server-side Matomo configuration, such as IP anonymization, retention
@@ -230,16 +269,10 @@ rules and visitor profile settings, is also part of the compliance story.
 
 ## Roadmap
 
-The next development areas are expected to focus on:
+Possible future work, without commitment:
 
-- Consent and opt-out behavior in the tracker flow.
-- Network dispatch with deterministic tests.
-- Manual QML tracking APIs.
-- Small C++ and QML examples.
-- Install-tree validation and package consumption.
-
-This roadmap is intentionally high level and may change as the public API
-stabilizes.
+- An optional, bounded offline queue for requests sent while offline.
+- A Conan package.
 
 ## License
 

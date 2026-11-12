@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
     MatomoQt
-    VERSION 0.1.0
+    VERSION 1.0.0
     DESCRIPTION "C++ QT API client SDK for the Matomo Tracking API"
     HOMEPAGE_URL "https://github.com/Infomaniak/matomo-sdk-qt"
     LANGUAGES CXX
