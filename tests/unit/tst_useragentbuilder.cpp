@@ -21,6 +21,9 @@
 #include "UserAgentBuilder_p.h"
 
 #include <QtCore/QBuffer>
+#include <QtCore/QFile>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 #include <QtCore/QUrlQuery>
 #include <QtTest/QtTest>
 
@@ -53,6 +56,13 @@ class UserAgentBuilderTest : public QObject {
         static void mapsQtCpuArchitecture();
         static void currentDesktopInfoIncludesApplicationAndQtVersion();
         static void parsesEscapedLinuxDistroName();
+        static void readsLinuxVersionIdFromOsRelease_data();
+        static void readsLinuxVersionIdFromOsRelease();
+        static void currentDesktopInfoReportsLinuxDistributionVersion();
+        static void linuxUserAgentDoesNotCarryDistributionVersion();
+        static void buildsClientHints_data();
+        static void buildsClientHints();
+        static void clientHintsEscapeTheVersion();
         static void requestBuilderSendsBuiltUserAgent();
 };
 
@@ -306,7 +316,107 @@ void UserAgentBuilderTest::parsesEscapedLinuxDistroName() {
     osRelease.setData("ID=example\nNAME=\"Example \\\"Linux\\\" \\\\ Edition\"\n");
     QVERIFY(osRelease.open(QIODevice::ReadOnly | QIODevice::Text));
 
-    QCOMPARE(Internal::linuxDistroFromOsRelease(osRelease), QStringLiteral("Example \"Linux\" \\ Edition"));
+    QCOMPARE(Internal::osReleaseFromDevice(osRelease).name, QStringLiteral("Example \"Linux\" \\ Edition"));
+}
+
+void UserAgentBuilderTest::readsLinuxVersionIdFromOsRelease_data() {
+    QTest::addColumn<QByteArray>("osRelease");
+    QTest::addColumn<QString>("expectedVersion");
+
+    QTest::newRow("quoted") << QByteArray("NAME=\"Ubuntu\"\nVERSION=\"26.04 LTS (Resolute Raccoon)\"\nVERSION_ID=\"26.04\"\n")
+                            << QStringLiteral("26.04");
+    QTest::newRow("unquoted") << QByteArray("NAME=\"Fedora Linux\"\nVERSION_ID=42\nVERSION_CODENAME=\"\"\n")
+                              << QStringLiteral("42");
+    QTest::newRow("absent-on-rolling-release") << QByteArray("NAME=\"Arch Linux\"\nBUILD_ID=rolling\n") << QString();
+}
+
+void UserAgentBuilderTest::readsLinuxVersionIdFromOsRelease() {
+    // Catches the version read from VERSION ("26.04 LTS (...)") or left in quotes: Matomo would
+    // then show a wrong OS version, or none.
+    QFETCH(QByteArray, osRelease);
+    QFETCH(QString, expectedVersion);
+    QBuffer device(&osRelease);
+    QVERIFY(device.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    const auto parsed = Internal::osReleaseFromDevice(device);
+
+    QCOMPARE(parsed.versionId, expectedVersion);
+    QVERIFY(!parsed.name.isEmpty());
+}
+
+void UserAgentBuilderTest::currentDesktopInfoReportsLinuxDistributionVersion() {
+    // Catches the version parsed but never wired in: QOperatingSystemVersion knows none on Linux.
+#if !defined(Q_OS_LINUX)
+    QSKIP("Linux only.");
+#else
+    QFile file(QStringLiteral("/etc/os-release"));
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QSKIP("No /etc/os-release on this machine.");
+    }
+    const auto osRelease = Internal::osReleaseFromDevice(file);
+
+    const auto info = UserAgentBuilder::currentDesktopInfo(QStringLiteral("kDrive"), QStringLiteral("4.0.1"));
+
+    QCOMPARE(info.operatingSystemVersion, osRelease.versionId);
+    QCOMPARE(info.linuxDistro, osRelease.name);
+#endif
+}
+
+void UserAgentBuilderTest::linuxUserAgentDoesNotCarryDistributionVersion() {
+    // Catches the distribution version leaking into the User-Agent, which would change how
+    // DeviceDetector parses it for hosts that already send it.
+    UserAgentInfo info{
+            .productName = QStringLiteral("kDrive"),
+            .productVersion = QStringLiteral("4.0.0.0"),
+            .operatingSystem = UserAgentOperatingSystem::Linux,
+            .architecture = UserAgentArchitecture::X64,
+            .qtVersion = QStringLiteral("6.12.0"),
+            .linuxDistro = QStringLiteral("Ubuntu"),
+    };
+    info.operatingSystemVersion = QStringLiteral("26.04");
+
+    QCOMPARE(UserAgentBuilder::buildDesktopUserAgent(info),
+             QStringLiteral("Mozilla/5.0 (X11; Ubuntu; Linux x86_64) kDrive/4.0.0.0 Qt/6.12.0"));
+}
+
+void UserAgentBuilderTest::buildsClientHints_data() {
+    QTest::addColumn<int>("operatingSystem");
+    QTest::addColumn<QString>("version");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("linux") << int(UserAgentOperatingSystem::Linux) << QStringLiteral(" 26.04 ")
+                           << QStringLiteral(R"({"platform":"Linux","platformVersion":"26.04","mobile":false,"model":""})");
+    QTest::newRow("macos") << int(UserAgentOperatingSystem::MacOS) << QStringLiteral("14.7.0")
+                           << QStringLiteral(R"({"platform":"macOS","platformVersion":"14.7.0","mobile":false,"model":""})");
+    // The NT version would make Matomo report Windows 11 as Windows 10.
+    QTest::newRow("windows") << int(UserAgentOperatingSystem::Windows) << QStringLiteral("10.0.22631") << QString();
+    QTest::newRow("unknown-os") << int(UserAgentOperatingSystem::Unknown) << QStringLiteral("1.0") << QString();
+    QTest::newRow("empty-version") << int(UserAgentOperatingSystem::Linux) << QString() << QString();
+    QTest::newRow("blank-version") << int(UserAgentOperatingSystem::MacOS) << QStringLiteral("  ") << QString();
+}
+
+void UserAgentBuilderTest::buildsClientHints() {
+    // Catches hints Matomo cannot use: a platform name outside Sec-CH-UA-Platform, an empty
+    // platformVersion, or a Windows version that misreports Windows 11.
+    QFETCH(int, operatingSystem);
+    QFETCH(QString, version);
+    QFETCH(QString, expected);
+    UserAgentInfo info{.operatingSystem = static_cast<UserAgentOperatingSystem>(operatingSystem)};
+    info.operatingSystemVersion = version;
+
+    QCOMPARE(UserAgentBuilder::buildClientHints(info), expected);
+}
+
+void UserAgentBuilderTest::clientHintsEscapeTheVersion() {
+    // Catches a version pasted unescaped: the hints would no longer be a JSON object, and the
+    // request builder rejects such hints, which would stop all tracking.
+    UserAgentInfo info{.operatingSystem = UserAgentOperatingSystem::Linux};
+    info.operatingSystemVersion = QStringLiteral(R"(1.0"\x)");
+
+    const auto document = QJsonDocument::fromJson(UserAgentBuilder::buildClientHints(info).toUtf8());
+
+    QVERIFY(document.isObject());
+    QCOMPARE(document.object().value(QStringLiteral("platformVersion")).toString(), info.operatingSystemVersion);
 }
 
 void UserAgentBuilderTest::requestBuilderSendsBuiltUserAgent() {

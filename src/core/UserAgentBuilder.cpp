@@ -20,6 +20,8 @@
 #include "UserAgentBuilder_p.h"
 
 #include <QtCore/QFile>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonDocument>
 #include <QtCore/QOperatingSystemVersion>
 #include <QtCore/QStringList>
 #include <QtCore/QSysInfo>
@@ -239,19 +241,44 @@ QString unquoteOsReleaseValue(QString value) {
     return unescaped.trimmed();
 }
 
+QString jsonString(const QString &value) {
+    // Serializing a one-element array is the simplest way to get a JSON-escaped string with QtCore.
+    const QByteArray array = QJsonDocument(QJsonArray{value}).toJson(QJsonDocument::Compact);
+    return QString::fromUtf8(array.mid(1, array.size() - 2));
+}
+
+Internal::OsRelease currentOsRelease() {
+#if !defined(Q_OS_LINUX)
+    return {};
+#else
+    QFile file(QStringLiteral("/etc/os-release"));
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+
+    return Internal::osReleaseFromDevice(file);
+#endif
+}
+
 } // namespace
 
 namespace Internal {
 
-QString linuxDistroFromOsRelease(QIODevice &device) {
+OsRelease osReleaseFromDevice(QIODevice &device) {
+    const auto nameKey = QStringLiteral("NAME=");
+    const auto versionIdKey = QStringLiteral("VERSION_ID=");
+
+    OsRelease osRelease;
     QTextStream stream(&device);
     for (QString line = stream.readLine(); !line.isNull(); line = stream.readLine()) {
-        if (line.startsWith(QStringLiteral("NAME="))) {
-            return unquoteOsReleaseValue(line.mid(5));
+        if (line.startsWith(nameKey)) {
+            osRelease.name = unquoteOsReleaseValue(line.mid(nameKey.size()));
+        } else if (line.startsWith(versionIdKey)) {
+            osRelease.versionId = unquoteOsReleaseValue(line.mid(versionIdKey.size()));
         }
     }
 
-    return {};
+    return osRelease;
 }
 
 } // namespace Internal
@@ -298,23 +325,40 @@ UserAgentInfo UserAgentBuilder::currentDesktopInfo(QString productName, QString 
     };
 
     if (operatingSystem == UserAgentOperatingSystem::Linux) {
-        info.linuxDistro = currentLinuxDistro();
+        // QOperatingSystemVersion knows no version on Linux: use the distribution's instead.
+        const auto osRelease = currentOsRelease();
+        info.linuxDistro = osRelease.name;
+        info.operatingSystemVersion = osRelease.versionId;
     }
 
     return info;
 }
 
 QString UserAgentBuilder::currentLinuxDistro() {
-#if !defined(Q_OS_LINUX)
-    return {};
-#else
-    QFile file(QStringLiteral("/etc/os-release"));
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    return currentOsRelease().name;
+}
+
+QString UserAgentBuilder::buildClientHints(const UserAgentInfo &info) {
+    QString platform;
+    switch (info.operatingSystem) {
+        case UserAgentOperatingSystem::Linux:
+            platform = QStringLiteral("Linux");
+            break;
+        case UserAgentOperatingSystem::MacOS:
+            platform = QStringLiteral("macOS");
+            break;
+        case UserAgentOperatingSystem::Windows: // See the header: the expected version is not available.
+        case UserAgentOperatingSystem::Unknown:
+            return {};
+    }
+
+    const QString version = info.operatingSystemVersion.trimmed();
+    if (version.isEmpty()) {
         return {};
     }
 
-    return Internal::linuxDistroFromOsRelease(file);
-#endif
+    return QStringLiteral(R"({"platform":%1,"platformVersion":%2,"mobile":false,"model":""})")
+            .arg(jsonString(platform), jsonString(version));
 }
 
 QString UserAgentBuilder::buildDesktopUserAgent(const UserAgentInfo &info) {
