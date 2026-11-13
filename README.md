@@ -56,7 +56,8 @@ The public API includes:
 - `RequestBuildResult` and `TrackingRequest` expose the build status and the
   generated URL;
 - `UserAgentBuilder` can generate desktop User-Agent strings with
-  DeviceDetector-compatible OS tokens.
+  DeviceDetector-compatible OS tokens, and User-Agent Client Hints carrying the
+  OS version, which Matomo needs to report the version of a Linux distribution.
 - `NetworkDispatcher` sends built tracking URLs over HTTP with
   `QNetworkAccessManager`, timeout, circuit breaker and `rand` cache-busting;
   it never silently ignores SSL errors and never logs full tracking URLs.
@@ -152,10 +153,9 @@ config.actionUrlBase = QUrl(QStringLiteral("app://desktop/"));
 config.siteId = 1;
 
 MatomoQt::RequestBuilder requestBuilder(config);
-const auto userAgent = MatomoQt::UserAgentBuilder::buildDesktopUserAgent(
-        MatomoQt::UserAgentBuilder::currentDesktopInfo(
-                QStringLiteral("ExampleApp"),
-                QStringLiteral("1.0.0")));
+const auto desktopInfo = MatomoQt::UserAgentBuilder::currentDesktopInfo(
+        QStringLiteral("ExampleApp"),
+        QStringLiteral("1.0.0"));
 
 const auto requestResult = requestBuilder.buildPageView(
         {
@@ -163,9 +163,11 @@ const auto requestResult = requestBuilder.buildPageView(
                 .actionName = QStringLiteral("Preferences"),
         },
         {
-                .userAgent = userAgent,
+                .userAgent = MatomoQt::UserAgentBuilder::buildDesktopUserAgent(desktopInfo),
                 .language = QStringLiteral("fr-CH"),
                 .screenResolution = QStringLiteral("1920x1080"),
+                // Empty on Windows and when the OS version is unknown.
+                .clientHints = MatomoQt::UserAgentBuilder::buildClientHints(desktopInfo),
         });
 
 if (requestResult.accepted()) {
@@ -251,6 +253,7 @@ Each request carries only the following Matomo Tracking HTTP API parameters:
 | `lang` | Name of the default `QLocale`, e.g. `fr_FR` | Always |
 | `ua` | `TrackerConfig::userAgent` | When configured |
 | `res` | `TrackerConfig::screenResolution` | When configured |
+| `uadata` | `TrackerConfig::clientHints`: OS platform and version only, no device model or identifier | When configured |
 | `action_name` | Page view action name | Page views, when set |
 | `ca`, `e_c`, `e_a`, `e_n`, `e_v` | Event category, action, name and value | Events |
 | `dimensionN` | Custom dimensions from the config and the call | When set; not on pings |

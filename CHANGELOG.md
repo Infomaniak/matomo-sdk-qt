@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-13
+
+### Added
+
+- `UserAgentBuilder::buildClientHints()` builds User-Agent Client Hints with the
+  OS platform and version, for Linux and macOS.
+- `TrackerConfig::clientHints` and `RequestBuildOptions::clientHints` send them
+  as Matomo's `uadata` parameter, so Matomo reports the version of a Linux
+  distribution, e.g. "Ubuntu 26.04" instead of "Ubuntu". A value that is not a JSON object rejects
+  the request with `RequestInvalidPayload`.
+
+### Changed
+
+- On Linux, `UserAgentBuilder::currentDesktopInfo()` fills
+  `operatingSystemVersion` with the distribution's `VERSION_ID` from
+  `/etc/os-release`. The User-Agent string is unchanged.
+
 ## [1.0.0] - 2026-11-12
 
 First stable release. The public C++ and QML APIs now follow Semantic Versioning.
@@ -40,5 +57,6 @@ First stable release. The public C++ and QML APIs now follow Semantic Versioning
 - A request aborted from outside the dispatcher now reports a result and no
   longer keeps the circuit breaker open forever.
 
-[Unreleased]: https://github.com/Infomaniak/matomo-sdk-qt/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Infomaniak/matomo-sdk-qt/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Infomaniak/matomo-sdk-qt/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Infomaniak/matomo-sdk-qt/releases/tag/v1.0.0
