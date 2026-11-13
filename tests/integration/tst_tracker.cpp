@@ -187,6 +187,7 @@ class TrackerIntegrationTest : public QObject {
         void customDimensionAppearsInRequest();
         void callDimensionOverridesTrackerDimension();
         void screenResolutionIsSentOnlyWhenConfigured();
+        void clientHintsAreSentOnlyWhenConfigured();
         void clearCustomDimensionRemovesFromRequest();
         void pingDoesNotCarryCustomDimensions();
         void runtimeStatsAreAccurate();
@@ -534,6 +535,31 @@ void TrackerIntegrationTest::screenResolutionIsSentOnlyWhenConfigured() {
         const auto query = queryFor(server.lastRequestPath());
         QCOMPARE(hasQueryItem(query, QStringLiteral("res")), !resolution.isEmpty());
         QCOMPARE(queryValue(query, QStringLiteral("res")), resolution);
+    }
+}
+
+void TrackerIntegrationTest::clientHintsAreSentOnlyWhenConfigured() {
+    // Catches hints configured on the tracker but never copied into the request options, so
+    // Matomo keeps showing the OS without its version.
+    const QString clientHints = QStringLiteral(R"({"platform":"Linux","platformVersion":"26.04","mobile":false,"model":""})");
+    for (const auto &configured: {clientHints, QString()}) {
+        TestHttpServer server;
+        QVERIFY(server.start());
+
+        auto config = validConfig(server.url());
+        config.clientHints = configured;
+
+        DefaultStores stores;
+        Tracker tracker(config, stores.consent, stores.clientId);
+        tracker.setConsentState(ConsentState::Value::Granted);
+
+        QSignalSpy dispatchSpy(&tracker, &Tracker::dispatchFinished);
+        (void) tracker.trackPageView({.path = QStringLiteral("settings")});
+        QVERIFY(dispatchSpy.wait(5000));
+
+        const auto query = queryFor(server.lastRequestPath());
+        QCOMPARE(hasQueryItem(query, QStringLiteral("uadata")), !configured.isEmpty());
+        QCOMPARE(queryValue(query, QStringLiteral("uadata")), configured);
     }
 }
 

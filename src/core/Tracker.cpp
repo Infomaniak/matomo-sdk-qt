@@ -291,6 +291,7 @@ RequestBuildOptions Tracker::buildOptions() const {
     options.userAgent = m_config.userAgent;
     options.language = QLocale().name();
     options.screenResolution = m_config.screenResolution;
+    options.clientHints = m_config.clientHints;
     return options;
 }
 

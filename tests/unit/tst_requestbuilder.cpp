@@ -55,6 +55,9 @@ class RequestBuilderTest : public QObject {
         static void rejectsInvalidConfigAcrossBuilders();
         static void rejectsInvalidClientIdAcrossBuilders();
         static void includesClientContextAcrossBuilders();
+        static void encodesClientHints();
+        static void rejectsClientHintsThatAreNotAJsonObject_data();
+        static void rejectsClientHintsThatAreNotAJsonObject();
         static void rejectsDuplicateEventDimensions();
         static void rejectsInvalidPayload();
 };
@@ -304,6 +307,7 @@ void RequestBuilderTest::omitsEmptyOptionalFields() {
     QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("ua")));
     QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("lang")));
     QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("res")));
+    QVERIFY(!hasQueryItem(queryFor(event), QStringLiteral("uadata")));
 }
 
 void RequestBuilderTest::escapesReservedCharacters() {
@@ -473,6 +477,7 @@ void RequestBuilderTest::includesClientContextAcrossBuilders() {
             .userAgent = QStringLiteral("kDrive/4.0 Qt/6.8 Linux"),
             .language = QStringLiteral("fr-CH,fr;q=0.9"),
             .screenResolution = QStringLiteral("1920x1080"),
+            .clientHints = QStringLiteral(R"({"platform":"Linux","platformVersion":"26.04","mobile":false,"model":""})"),
     };
 
     for (const auto &builderCall: allBuilders()) {
@@ -484,6 +489,44 @@ void RequestBuilderTest::includesClientContextAcrossBuilders() {
         QVERIFY2(queryItemValue(query, QStringLiteral("ua")) == options.userAgent, builderCall.name.constData());
         QVERIFY2(queryItemValue(query, QStringLiteral("lang")) == options.language, builderCall.name.constData());
         QVERIFY2(queryItemValue(query, QStringLiteral("res")) == options.screenResolution, builderCall.name.constData());
+        QVERIFY2(queryItemValue(query, QStringLiteral("uadata")) == options.clientHints, builderCall.name.constData());
+    }
+}
+
+void RequestBuilderTest::encodesClientHints() {
+    // Catches JSON delimiters left raw in the URL, or a JSON '&' or '+' splitting or altering the
+    // value once Matomo (PHP) decodes the query.
+    const RequestBuilder builder(validConfig());
+    const QString clientHints =
+            QStringLiteral(R"({"platform":"Linux","platformVersion":"1+2&x=y #z","mobile":false,"model":""})");
+
+    const auto result = builder.buildPageView({.path = QStringLiteral("settings")}, {.clientHints = u' ' + clientHints + u' '});
+
+    QVERIFY(result.accepted());
+    const auto encodedUrl = result.request.url.toEncoded();
+    QVERIFY2(encodedUrl.contains("uadata=%7B%22platform%22"), encodedUrl.constData());
+    QVERIFY2(encodedUrl.contains("1%2B2%26x%3Dy%20%23z"), encodedUrl.constData());
+    QCOMPARE(queryItemValue(queryFor(result), QStringLiteral("uadata")), clientHints);
+}
+
+void RequestBuilderTest::rejectsClientHintsThatAreNotAJsonObject_data() {
+    QTest::addColumn<QString>("clientHints");
+    QTest::newRow("plain-text") << QStringLiteral("Linux 26.04");
+    QTest::newRow("truncated-object") << QStringLiteral(R"({"platform":"Linux")");
+    QTest::newRow("array") << QStringLiteral(R"(["Linux","26.04"])");
+    QTest::newRow("string") << QStringLiteral(R"("Linux")");
+}
+
+void RequestBuilderTest::rejectsClientHintsThatAreNotAJsonObject() {
+    // Catches malformed hints sent anyway: Matomo silently ignores them, so the host's
+    // configuration error would never surface.
+    QFETCH(QString, clientHints);
+    const RequestBuilder builder(validConfig());
+
+    for (const auto &builderCall: allBuilders()) {
+        const auto result = builderCall.build(builder, {.clientHints = clientHints});
+        QVERIFY2(result.result.status == RequestStatus::Value::RequestInvalidPayload, builderCall.name.constData());
+        QVERIFY2(result.request.url.isEmpty(), builderCall.name.constData());
     }
 }
 

@@ -65,6 +65,18 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          */
         QString screenResolution;
 
+        /** User-Agent Client Hints sent as Matomo's `uadata` parameter, as a JSON object.
+         *
+         *  Matomo reads the version of a Linux distribution from them only, e.g. to
+         *  report "Ubuntu 26.04" instead of "Ubuntu". Build them with UserAgentBuilder::buildClientHints()
+         *  or supply your own. Leave empty to omit the uadata parameter.
+         *
+         *  A non-empty value that is not a JSON object makes every tracking call fail
+         *  with RequestInvalidPayload: Matomo would silently ignore it, so the
+         *  configuration error would otherwise go unnoticed.
+         */
+        QString clientHints;
+
         /** Network dispatcher configuration (timeout, circuit breaker). */
         NetworkDispatcherConfig networkDispatcherConfig;
 
