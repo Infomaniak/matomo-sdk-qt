@@ -23,6 +23,12 @@ class QIODevice;
 
 namespace MatomoQt::Internal {
 
-[[nodiscard]] QString linuxDistroFromOsRelease(QIODevice &device);
+/** Fields of os-release(5) used to describe the Linux distribution. */
+struct OsRelease {
+        QString name; // NAME, e.g. "Ubuntu"
+        QString versionId; // VERSION_ID, e.g. "26.04"; absent on rolling distributions such as Arch Linux
+};
+
+[[nodiscard]] OsRelease osReleaseFromDevice(QIODevice &device);
 
 } // namespace MatomoQt::Internal
