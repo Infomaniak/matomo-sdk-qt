@@ -62,7 +62,7 @@ set_target_properties(MatomoQtCore PROPERTIES
     EXPORT_NAME Core
     OUTPUT_NAME MatomoQtCore
     VERSION "${PROJECT_VERSION}"
-    SOVERSION "${PROJECT_VERSION_MAJOR}"
+    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
 
 qt6_extract_metatypes(MatomoQtCore)

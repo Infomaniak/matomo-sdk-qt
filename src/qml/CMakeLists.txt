@@ -48,7 +48,7 @@ set_target_properties(MatomoQtQml PROPERTIES
     EXPORT_NAME Qml
     OUTPUT_NAME MatomoQtQml
     VERSION "${PROJECT_VERSION}"
-    SOVERSION "${PROJECT_VERSION_MAJOR}"
+    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
 
 target_link_libraries(MatomoQtQml

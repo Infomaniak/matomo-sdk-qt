@@ -18,6 +18,7 @@
 #include <MatomoQt/RequestBuilder.h>
 #include <MatomoQt/RequestStatus.h>
 
+#include <QtCore/QJsonDocument>
 #include <QtCore/QLocale>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSet>
@@ -40,6 +41,12 @@ RequestBuildResult invalidConfig(QString message) {
 
 RequestBuildResult invalidPayload(QString message) {
     return failure(RequestStatus::Value::RequestInvalidPayload, std::move(message));
+}
+
+bool isJsonObject(const QString &value) {
+    QJsonParseError error{};
+    const auto document = QJsonDocument::fromJson(value.toUtf8(), &error);
+    return error.error == QJsonParseError::NoError && document.isObject();
 }
 
 bool hasValidActionUrlBase(const QUrl &url) {
@@ -131,6 +138,11 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QString &acti
         return invalidPayload(QStringLiteral("Client ID must be 16 hexadecimal characters."));
     }
 
+    const QString clientHints = options.clientHints.trimmed();
+    if (!clientHints.isEmpty() && !isJsonObject(clientHints)) {
+        return invalidPayload(QStringLiteral("Client hints must be a JSON object."));
+    }
+
     QUrl url = config.endpoint;
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("idsite"), QString::number(config.siteId));
@@ -152,6 +164,10 @@ RequestBuildResult buildRequest(const TrackerConfig &config, const QString &acti
 
     if (!options.screenResolution.trimmed().isEmpty()) {
         query.addQueryItem(QStringLiteral("res"), options.screenResolution.trimmed());
+    }
+
+    if (!clientHints.isEmpty()) {
+        query.addQueryItem(QStringLiteral("uadata"), clientHints);
     }
 
     if (auto payloadResult = addPayloadParameters(&query); !payloadResult.accepted()) {

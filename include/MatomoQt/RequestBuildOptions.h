@@ -39,6 +39,11 @@ struct MATOMOQT_CORE_EXPORT RequestBuildOptions {
         QString userAgent;
         QString language;
         QString screenResolution;
+        /** User-Agent Client Hints sent as Matomo's `uadata` parameter, see
+         * TrackerConfig::clientHints. A non-empty value that is not a JSON object
+         * rejects the request with RequestInvalidPayload.
+         */
+        QString clientHints;
 };
 
 } // namespace MatomoQt
