@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Linux, `UserAgentBuilder::currentDesktopInfo()` fills
   `operatingSystemVersion` with the distribution's `VERSION_ID` from
   `/etc/os-release`. The User-Agent string is unchanged.
+- The shared libraries' SONAME now follows the minor version, e.g.
+  `libMatomoQtCore.so.1.1`: a minor release can add fields to public structs
+  such as `TrackerConfig`, which breaks binary compatibility. Applications
+  linked dynamically against 1.0.0 must be rebuilt.
 
 ## [1.0.0] - 2026-11-12
 
