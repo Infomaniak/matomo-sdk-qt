@@ -65,6 +65,9 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          */
         QString screenResolution;
 
+        /** Network dispatcher configuration (timeout, circuit breaker). */
+        NetworkDispatcherConfig networkDispatcherConfig;
+
         /** User-Agent Client Hints sent as Matomo's `uadata` parameter, as a JSON object.
          *
          *  Matomo reads the version of a Linux distribution from them only, e.g. to
@@ -76,9 +79,6 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          *  configuration error would otherwise go unnoticed.
          */
         QString clientHints;
-
-        /** Network dispatcher configuration (timeout, circuit breaker). */
-        NetworkDispatcherConfig networkDispatcherConfig;
 
         /** Returns true when the endpoint, action URL base and site ID are usable. */
         [[nodiscard]] bool isValid() const;
