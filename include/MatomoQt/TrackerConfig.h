@@ -32,7 +32,7 @@ namespace MatomoQt {
 struct MATOMOQT_CORE_EXPORT TrackerConfig {
         using SiteId = qint32;
 
-        QUrl endpoint;
+        QUrl endpoint = {};
 
         /** Absolute URL that page-view and event paths are resolved against to build Matomo's `url`.
          *
@@ -40,7 +40,7 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          *  `homePage` gives `app://homePage`, with its case preserved. Any other base follows
          *  standard URL resolution, e.g. `app://desktop/` and `homePage` give `app://desktop/homePage`.
          */
-        QUrl actionUrlBase;
+        QUrl actionUrlBase = {};
         SiteId siteId = 0;
         PrivacyMode::Value privacyMode = PrivacyMode::Value::RequiresConsent;
 
@@ -49,24 +49,24 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          *
          *  Tracker-level dimensions are not sent with sendPing()
          */
-        QMap<int, QString> customDimensions;
+        QMap<int, QString> customDimensions = {};
 
         /** Full User-Agent sent as Matomo's `ua` Tracking HTTP API parameter.
          *
          *  Leave empty to omit the ua parameter.  The host application can
          *  build this with UserAgentBuilder or supply its own.
          */
-        QString userAgent;
+        QString userAgent = {};
 
         /** Screen resolution sent as Matomo's `res` parameter, e.g. `1920x1080`.
          *
          *  Leave empty to omit the res parameter.  The core library only depends on
          *  QtCore, so the host application reads the value from its own screen API.
          */
-        QString screenResolution;
+        QString screenResolution = {};
 
         /** Network dispatcher configuration (timeout, circuit breaker). */
-        NetworkDispatcherConfig networkDispatcherConfig;
+        NetworkDispatcherConfig networkDispatcherConfig = {};
 
         /** User-Agent Client Hints sent as Matomo's `uadata` parameter, as a JSON object.
          *
@@ -78,7 +78,7 @@ struct MATOMOQT_CORE_EXPORT TrackerConfig {
          *  with RequestInvalidPayload: Matomo would silently ignore it, so the
          *  configuration error would otherwise go unnoticed.
          */
-        QString clientHints;
+        QString clientHints = {};
 
         /** Returns true when the endpoint, action URL base and site ID are usable. */
         [[nodiscard]] bool isValid() const;

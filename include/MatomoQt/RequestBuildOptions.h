@@ -25,7 +25,7 @@ namespace MatomoQt {
 
 /** Optional request-building inputs supplied by the tracker orchestration layer. */
 struct MATOMOQT_CORE_EXPORT RequestBuildOptions {
-        QString clientId;
+        QString clientId = {};
         /** Full User-Agent sent as Matomo's `ua` Tracking HTTP API parameter.
          *
          * Matomo uses this value for bot/client/device/OS classification. It can
@@ -36,14 +36,14 @@ struct MATOMOQT_CORE_EXPORT RequestBuildOptions {
          * - https://developer.matomo.org/api-reference/tracking-api
          * - https://github.com/matomo-org/device-detector
          */
-        QString userAgent;
-        QString language;
-        QString screenResolution;
+        QString userAgent = {};
+        QString language = {};
+        QString screenResolution = {};
         /** User-Agent Client Hints sent as Matomo's `uadata` parameter, see
          * TrackerConfig::clientHints. A non-empty value that is not a JSON object
          * rejects the request with RequestInvalidPayload.
          */
-        QString clientHints;
+        QString clientHints = {};
 };
 
 } // namespace MatomoQt

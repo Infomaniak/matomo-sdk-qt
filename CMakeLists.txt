@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
     MatomoQt
-    VERSION 1.1.0
+    VERSION 1.1.1
     DESCRIPTION "C++ QT API client SDK for the Matomo Tracking API"
     HOMEPAGE_URL "https://github.com/Infomaniak/matomo-sdk-qt"
     LANGUAGES CXX
@@ -27,6 +27,13 @@ if(MATOMOQT_ENABLE_COVERAGE)
     else()
         message(WARNING "MATOMOQT_ENABLE_COVERAGE is only supported with GCC/Clang; ignoring.")
     endif()
+endif()
+
+# Surface warnings in every build; MATOMOQT_WARNINGS_AS_ERRORS turns them into errors.
+# Every public DTO member carries a default initializer, so partial designated
+# initializers stay valid under -Wextra's -Wmissing-field-initializers.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra)
 endif()
 
 add_subdirectory(src/core)

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-25
+
+### Changed
+
+- The project builds with `-Wall -Wextra`, and every member of the public
+  structs carries a default initializer, so partially designated initializers
+  such as `PageView{.path = "..."}` no longer trigger
+  `-Wmissing-field-initializers` in host builds.
+
 ## [1.1.0] - 2026-11-13
 
 ### Added
