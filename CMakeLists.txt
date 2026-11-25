@@ -29,6 +29,13 @@ if(MATOMOQT_ENABLE_COVERAGE)
     endif()
 endif()
 
+# Surface warnings in every build; MATOMOQT_WARNINGS_AS_ERRORS turns them into errors.
+# Every public DTO member carries a default initializer, so partial designated
+# initializers stay valid under -Wextra's -Wmissing-field-initializers.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra)
+endif()
+
 add_subdirectory(src/core)
 if(MATOMOQT_BUILD_QML)
     add_subdirectory(src/qml)
