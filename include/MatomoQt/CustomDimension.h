@@ -32,7 +32,7 @@ struct MATOMOQT_CORE_EXPORT CustomDimension {
         static constexpr Id MaxId = 999;
 
         Id id = 0;
-        QString value;
+        QString value = {};
 
         /** Returns true when the dimension ID is within Matomo's valid slot range (1-999). */
         [[nodiscard]] bool isValid() const;

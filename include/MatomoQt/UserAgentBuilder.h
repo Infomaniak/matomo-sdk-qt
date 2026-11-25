@@ -39,15 +39,15 @@ enum class UserAgentArchitecture {
 };
 
 struct MATOMOQT_CORE_EXPORT UserAgentInfo {
-        QString productName;
-        QString productVersion;
+        QString productName = {};
+        QString productVersion = {};
         UserAgentOperatingSystem operatingSystem = UserAgentOperatingSystem::Unknown;
         /** OS version, e.g. `10.0.22631` on Windows, `14.7.0` on macOS, and the
          *  distribution's `VERSION_ID` from /etc/os-release on Linux (`26.04`). */
-        QString operatingSystemVersion;
+        QString operatingSystemVersion = {};
         UserAgentArchitecture architecture = UserAgentArchitecture::Unknown;
-        QString qtVersion;
-        QString linuxDistro;
+        QString qtVersion = {};
+        QString linuxDistro = {};
 };
 
 /** Builds desktop User-Agent strings for Matomo request context.

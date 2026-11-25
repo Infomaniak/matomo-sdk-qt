@@ -27,9 +27,9 @@ namespace MatomoQt {
 
 /** Page view tracking payload. */
 struct MATOMOQT_CORE_EXPORT PageView {
-        QString path;
-        QString actionName;
-        QList<CustomDimension> customDimensions;
+        QString path = {};
+        QString actionName = {};
+        QList<CustomDimension> customDimensions = {};
 
         /** Returns true when the page path is present. */
         [[nodiscard]] bool isValid() const;
